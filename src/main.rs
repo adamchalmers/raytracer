@@ -18,6 +18,8 @@ use rand::rngs::ThreadRng;
 
 const NUM_ANTIALIAS_SAMPLES: u32 = 10;
 const MAX_REFLECTIONS: u8 = 5;
+const FILENAME: &str = "fractal10.png";
+const OUTPUT_DIR: &str = "output";
 
 fn main() {
     let camera = Camera {
@@ -50,8 +52,8 @@ fn main() {
     let r = Renderer {
         width: 200,
         height: 100,
-        output_dir: "output",
-        filename: "fractal9.png",
+        output_dir: OUTPUT_DIR,
+        filename: FILENAME,
         camera,
         samples: NUM_ANTIALIAS_SAMPLES,
     };
@@ -69,7 +71,7 @@ fn background(r: &Ray) -> Color {
 fn color_hit_by(ray: &Ray, scene: &Hittable, rng: &mut ThreadRng, depth: u8) -> Color {
     // What color should this pixel be?
     // If the ray hits an object:
-    if let Some(hit) = scene.hit(&ray, 0.0, std::f64::MAX) {
+    if let Some(hit) = scene.hit(&ray, 0.001, std::f64::MAX) {
         // It could reflect off that object
         if depth < MAX_REFLECTIONS {
             let target = hit.p + hit.normal + texture::random_in_unit_sphere(rng);
