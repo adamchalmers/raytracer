@@ -1,3 +1,4 @@
+use crate::color::Color;
 use image;
 use std::path::Path;
 
@@ -21,18 +22,21 @@ impl Renderer {
     /// pixel_at computes the color of the input pixel
     pub fn write<F>(&self, pixel_at: F)
     where
-        F: Fn(Pixel) -> [u8; 3],
+        F: Fn(Pixel) -> Color,
     {
         let mut img_buf = image::ImageBuffer::new(self.width, self.height);
 
         // Iterate over the coordinates and pixels of the image
         for (x, y, pixel) in img_buf.enumerate_pixels_mut() {
-            *pixel = image::Rgb(pixel_at(Pixel {
-                x,
-                y: self.height - y,
-                width: self.width,
-                height: self.height,
-            }));
+            *pixel = image::Rgb(
+                pixel_at(Pixel {
+                    x,
+                    y: self.height - y,
+                    width: self.width,
+                    height: self.height,
+                })
+                .to_rgb(),
+            );
         }
 
         let path = Path::new(self.output_dir).join(self.filename);

@@ -28,7 +28,7 @@ fn background(r: Ray) -> Color {
     white.interpolate(&blue, t)
 }
 
-fn render(p: Pixel) -> [u8; 3] {
+fn render(p: Pixel) -> Color {
     let origin = Vec3::new_uniform(0.0);
     let lower_left_corner = Vec3 {
         x: -8.0,
@@ -63,11 +63,11 @@ fn render(p: Pixel) -> [u8; 3] {
         radius: 0.9,
     };
 
-    // What color should this pixel be? Depends on if it hit an object in the scene.
-    let color = if sphere.hit(&ray) {
+    // What color should this pixel be? Depends on if the ray hits an object in the scene.
+    // And there's only one object, so we can check pretty easily!
+    if sphere.hit(&ray) {
         Color::new(1.0, 0.0, 0.0)
     } else {
         background(ray)
-    };
-    color.to_rgb()
+    }
 }
