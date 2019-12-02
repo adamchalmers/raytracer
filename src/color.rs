@@ -57,6 +57,14 @@ impl Color {
             (self.b() * 255.9) as u8,
         ]
     }
+
+    pub fn to_rgb_gamma_corrected(&self) -> [u8; 3] {
+        [
+            (self.r().sqrt() * 255.9) as u8,
+            (self.g().sqrt() * 255.9) as u8,
+            (self.b().sqrt() * 255.9) as u8,
+        ]
+    }
 }
 
 impl Scalable for Color {

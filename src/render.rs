@@ -51,7 +51,7 @@ impl Renderer {
 
             // Write the final pixel color into the image.
             let antialiased_pixel_color = avg_color.average();
-            *pixel = image::Rgb(Color::from(antialiased_pixel_color).to_rgb());
+            *pixel = image::Rgb(Color::from(antialiased_pixel_color).to_rgb_gamma_corrected());
         }
 
         // Write the image to disk

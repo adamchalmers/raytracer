@@ -51,7 +51,7 @@ fn main() {
         width: 200,
         height: 100,
         output_dir: "output",
-        filename: "fractal8.png",
+        filename: "fractal9.png",
         camera,
         samples: NUM_ANTIALIAS_SAMPLES,
     };
