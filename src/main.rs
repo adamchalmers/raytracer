@@ -12,8 +12,8 @@ use crate::vector::Vec3;
 
 fn main() {
     let r = Renderer {
-        width: 840,
-        height: 525,
+        width: 200,
+        height: 100,
         output_dir: "output",
         filename: "fractal5.png",
     };
@@ -31,18 +31,18 @@ fn background(r: Ray) -> Color {
 fn render(p: Pixel) -> Color {
     let origin = Vec3::new_uniform(0.0);
     let lower_left_corner = Vec3 {
-        x: -8.0,
-        y: -5.0,
+        x: -2.0,
+        y: -1.0,
         z: -1.0,
     };
     let horizontal = Vec3 {
-        x: 16.0,
+        x: 4.0,
         y: 0.0,
         z: 0.0,
     };
     let vertical = Vec3 {
         x: 0.0,
-        y: 10.0,
+        y: 2.0,
         z: 0.0,
     };
 
@@ -60,7 +60,7 @@ fn render(p: Pixel) -> Color {
             y: 0.0,
             z: -1.0,
         },
-        radius: 0.9,
+        radius: 0.5,
     };
 
     // What color should this pixel be? Depends on if the ray hits an object in the scene.
