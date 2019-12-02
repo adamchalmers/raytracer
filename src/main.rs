@@ -1,58 +1,47 @@
+mod camera;
 mod color;
 mod hittable;
 mod ray;
 mod render;
 mod vector;
 
+use crate::camera::Camera;
 use crate::color::Color;
 use crate::hittable::{Hittable, Sphere};
 use crate::ray::Ray;
-use crate::render::{Pixel, Renderer};
+use crate::render::Renderer;
 use crate::vector::Vec3;
 
+const NUM_ANTIALIAS_SAMPLES: u32 = 10;
+
 fn main() {
+    let camera = Camera {
+        lower_left_corner: Vec3::new(-2.0, -1.0, -1.0),
+        horizontal: Vec3::new(4.0, 0.0, 0.0),
+        vertical: Vec3::new(0.0, 2.0, 0.0),
+        origin: Vec3::zero(),
+    };
+
     let r = Renderer {
         width: 200,
         height: 100,
         output_dir: "output",
-        filename: "fractal6.png",
+        filename: "fractal7.png",
+        camera,
+        samples: NUM_ANTIALIAS_SAMPLES,
     };
     r.write(render)
 }
 
 /// Render the nice blue/white background
-fn background(r: Ray) -> Color {
+fn background(r: &Ray) -> Color {
     let t = r.direction.unit().y * 0.5 + 1.0;
     let white = Color::new_uniform(1.0);
     let blue = Color::new(0.5, 0.7, 1.0);
     white.vec().interpolate(&blue.vec(), t).into()
 }
 
-fn render(p: Pixel) -> Color {
-    let origin = Vec3::new_uniform(0.0);
-    let lower_left_corner = Vec3 {
-        x: -2.0,
-        y: -1.0,
-        z: -1.0,
-    };
-    let horizontal = Vec3 {
-        x: 4.0,
-        y: 0.0,
-        z: 0.0,
-    };
-    let vertical = Vec3 {
-        x: 0.0,
-        y: 2.0,
-        z: 0.0,
-    };
-
-    let u = p.x as f64 / p.width as f64;
-    let v = p.y as f64 / p.height as f64;
-
-    // The direction of a ray starting at the camera and ending at the pixel
-    let direction = lower_left_corner + horizontal.scale(u) + vertical.scale(v);
-    let ray = Ray { origin, direction };
-
+fn render(ray: &Ray) -> Color {
     // Let's put a sphere in the middle of the scene.
     let little_sphere = Hittable::Sphere(Sphere {
         center: Vec3 {
@@ -62,6 +51,7 @@ fn render(p: Pixel) -> Color {
         },
         radius: 0.5,
     });
+    // And a big grassy plain
     let big_sphere = Hittable::Sphere(Sphere {
         center: Vec3 {
             x: 0.0,

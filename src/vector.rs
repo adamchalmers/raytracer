@@ -1,3 +1,4 @@
+use std::iter::Sum;
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 #[derive(Clone, Copy)]
@@ -14,6 +15,11 @@ impl Vec3 {
         Vec3 { x: f, y: f, z: f }
     }
 
+    /// Create the zero vector <0, 0, 0>
+    pub fn zero() -> Self {
+        Vec3::new_uniform(0.0)
+    }
+
     /// Gets a unit vector in the same direction as self.
     pub fn unit(&self) -> Self {
         self.scale(1.0 / self.length())
@@ -22,6 +28,10 @@ impl Vec3 {
     /// Compute the dot product
     pub fn dot(self, other: Self) -> f64 {
         (self.x * other.x) + (self.y * other.y) + (self.z * other.z)
+    }
+
+    pub fn new(x: f64, y: f64, z: f64) -> Self {
+        Vec3 { x, y, z }
     }
 
     /// Compute the cross product
@@ -54,6 +64,16 @@ impl Vec3 {
     // t*other + (1-t)self
     pub fn interpolate(&self, other: &Vec3, t: f64) -> Self {
         self.scale(1.0 - t) + other.scale(t)
+    }
+}
+
+impl<'a> Sum<&'a Vec3> for Vec3 {
+    fn sum<I: Iterator<Item = &'a Vec3>>(mut iter: I) -> Vec3 {
+        let mut output = Vec3::zero();
+        while let Some(v) = iter.next() {
+            output += *v;
+        }
+        output
     }
 }
 
