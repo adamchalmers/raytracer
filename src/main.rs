@@ -25,7 +25,7 @@ fn background(r: Ray) -> Color {
     let t = r.direction.unit().y * 0.5 + 1.0;
     let white = Color::new_uniform(1.0);
     let blue = Color::new(0.5, 0.7, 1.0);
-    white.interpolate(&blue, t)
+    white.vec().interpolate(&blue.vec(), t).into()
 }
 
 fn render(p: Pixel) -> Color {
@@ -70,11 +70,11 @@ fn render(p: Pixel) -> Color {
         },
         radius: 100.0,
     });
-    let scene = Hittable::Many(vec![little_sphere, big_sphere]);
+    let scene = Hittable::Many(vec![big_sphere, little_sphere]);
 
     // What color should this pixel be? Depends on if the ray hits an object in the scene.
     if let Some(hit) = scene.hit(&ray, 0.0, std::f64::MAX) {
-        (hit.normal + Vec3::new_uniform(1.0)).scale(0.5)
+        (hit.normal + Vec3::new_uniform(1.0)).scale(0.5).into()
     } else {
         background(ray)
     }

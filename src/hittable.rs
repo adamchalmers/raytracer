@@ -17,13 +17,17 @@ impl Hittable {
         match self {
             Self::Sphere(s) => s.hit(ray, t_min, t_max),
             Self::Many(hittables) => {
+                let mut closest_so_far = t_max;
+                let mut best_hit: Option<Hit> = None;
                 for hittable in hittables {
-                    let s = hittable.hit(ray, t_min, t_max);
-                    if s.is_some() {
-                        return s;
+                    if let Some(hit) = hittable.hit(ray, t_min, t_max) {
+                        if hit.t < closest_so_far {
+                            closest_so_far = hit.t;
+                            best_hit = Some(hit);
+                        }
                     }
                 }
-                None
+                best_hit
             }
         }
     }
