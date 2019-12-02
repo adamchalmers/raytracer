@@ -9,18 +9,22 @@ pub struct Vec3 {
 
 #[allow(dead_code)]
 impl Vec3 {
+    /// Create a vector where all components have value f
     pub fn new_uniform(f: f64) -> Self {
         Vec3 { x: f, y: f, z: f }
     }
 
+    /// Gets a unit vector in the same direction as self.
     pub fn unit(&self) -> Self {
         self.scale(1.0 / self.length())
     }
 
+    /// Compute the dot product
     pub fn dot(self, other: Self) -> f64 {
         (self.x * other.x) + (self.y * other.y) + (self.z * other.z)
     }
 
+    /// Compute the cross product
     pub fn cross(self, other: Self) -> Vec3 {
         Vec3 {
             x: (self.y * other.z) - (self.z * other.y),
@@ -37,27 +41,12 @@ impl Vec3 {
         (self.x * self.x) + (self.y * self.y) + (self.z * self.z)
     }
 
+    /// Scale the vector by a scalar
     pub fn scale(&self, f: f64) -> Self {
         Vec3 {
             x: f * self.x,
             y: f * self.y,
             z: f * self.z,
-        }
-    }
-
-    pub fn scale_i(&self, i: i32) -> Self {
-        Vec3 {
-            x: i as f64 * self.x,
-            y: i as f64 * self.y,
-            z: i as f64 * self.z,
-        }
-    }
-
-    pub fn scale_u(&self, u: i32) -> Self {
-        Vec3 {
-            x: u as f64 * self.x,
-            y: u as f64 * self.y,
-            z: u as f64 * self.z,
         }
     }
 

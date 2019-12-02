@@ -11,11 +11,14 @@ pub struct Renderer {
 pub struct Pixel {
     pub x: u32,
     pub y: u32,
+    /// Width of the image
     pub width: u32,
+    /// Height of the image
     pub height: u32,
 }
 
 impl Renderer {
+    /// pixel_at computes the color of the input pixel
     pub fn write<F>(&self, pixel_at: F)
     where
         F: Fn(Pixel) -> [u8; 3],
