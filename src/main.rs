@@ -1,13 +1,13 @@
 mod color;
+mod hittable;
 mod ray;
 mod render;
-mod sphere;
 mod vector;
 
 use crate::color::Color;
+use crate::hittable::{Hittable, Sphere};
 use crate::ray::Ray;
 use crate::render::{Pixel, Renderer};
-use crate::sphere::Sphere;
 use crate::vector::Vec3;
 
 fn main() {
@@ -15,7 +15,7 @@ fn main() {
         width: 200,
         height: 100,
         output_dir: "output",
-        filename: "fractal5.png",
+        filename: "fractal6.png",
     };
     r.write(render)
 }
@@ -62,12 +62,11 @@ fn render(p: Pixel) -> Color {
         },
         radius: 0.5,
     };
+    let scene = Hittable::Sphere(sphere);
 
     // What color should this pixel be? Depends on if the ray hits an object in the scene.
-    // And there's only one object, so we can check pretty easily!
-    if let Some(t) = sphere.hit(&ray) {
-        let normal = (ray.point_at(t) - Color::new(0.0, 0.0, -1.0)).unit();
-        Color::new(normal.x + 1.0, normal.y + 1.0, normal.z + 1.0).scale(0.5)
+    if let Some(hit) = scene.hit(&ray, 0.0, std::f64::MAX) {
+        (hit.normal + Vec3::new_uniform(1.0)).scale(0.5)
     } else {
         background(ray)
     }
