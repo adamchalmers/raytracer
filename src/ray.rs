@@ -1,3 +1,4 @@
+use crate::average::Scalable;
 use crate::Vec3;
 
 /// Rays are just finite lines, i.e. lines with a start and a direction.

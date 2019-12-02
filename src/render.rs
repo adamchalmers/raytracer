@@ -1,3 +1,4 @@
+use crate::average::Average;
 use crate::camera::Camera;
 use crate::color::Color;
 use crate::ray::Ray;
@@ -17,8 +18,8 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    /// pixel_at computes the color of the input pixel
-    pub fn write<F>(&self, pixel_at: F)
+    /// `color_hit_by` computes the color of the object the ray hits.
+    pub fn write<F>(&self, color_hit_by: F)
     where
         F: Fn(&Ray) -> Color,
     {
@@ -27,21 +28,31 @@ impl Renderer {
 
         // Iterate over the coordinates and pixels of the image
         for (x, y, pixel) in img_buf.enumerate_pixels_mut() {
-            let mut pixel_color = Vec3::new_uniform(0.0);
+            // Sample a number of points inside the pixel, get each of their colors, and average them
+            // all together. This is called "antialiasing" and helps the image look smoother.
+            let mut avg_color = Average::<Vec3>::new();
             for _ in 0..self.samples {
+                // Choose a random point inside this pixel
                 let rx: f64 = rng.gen();
                 let ry: f64 = rng.gen();
                 let u = (x as f64 + rx) / (self.width as f64);
                 let v = ((self.height - y) as f64 + ry) / (self.height as f64);
-                let ray = self.camera.ray_to_point(u, v);
-                pixel_color += pixel_at(&ray).vec();
-            }
-            pixel_color = pixel_color.scale(1.0 / self.samples as f64);
 
-            let color: Color = pixel_color.into();
-            *pixel = image::Rgb(color.to_rgb());
+                // Then get the ray from the camera to that point,
+                // check what color it hits.
+                let ray = self.camera.ray_to_point(u, v);
+                let color_at_this_point = color_hit_by(&ray);
+
+                // To do antialiasing, average this color with all the other points inside this pixel.
+                avg_color.push(color_at_this_point.vec());
+            }
+
+            // Write the final pixel color into the image.
+            let antialiased_pixel_color = avg_color.average();
+            *pixel = image::Rgb(Color::from(antialiased_pixel_color).to_rgb());
         }
 
+        // Write the image to disk
         let path = Path::new(self.output_dir).join(self.filename);
         img_buf.save(path).unwrap();
     }

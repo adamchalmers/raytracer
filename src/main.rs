@@ -1,3 +1,4 @@
+mod average;
 mod camera;
 mod color;
 mod hittable;
@@ -5,6 +6,7 @@ mod ray;
 mod render;
 mod vector;
 
+use crate::average::Scalable;
 use crate::camera::Camera;
 use crate::color::Color;
 use crate::hittable::{Hittable, Sphere};
@@ -30,7 +32,7 @@ fn main() {
         camera,
         samples: NUM_ANTIALIAS_SAMPLES,
     };
-    r.write(render)
+    r.write(color_hit_by)
 }
 
 /// Render the nice blue/white background
@@ -41,7 +43,7 @@ fn background(r: &Ray) -> Color {
     white.vec().interpolate(&blue.vec(), t).into()
 }
 
-fn render(ray: &Ray) -> Color {
+fn color_hit_by(ray: &Ray) -> Color {
     // Let's put a sphere in the middle of the scene.
     let little_sphere = Hittable::Sphere(Sphere {
         center: Vec3 {
@@ -62,9 +64,11 @@ fn render(ray: &Ray) -> Color {
     });
     let scene = Hittable::Many(vec![big_sphere, little_sphere]);
 
-    // What color should this pixel be? Depends on if the ray hits an object in the scene.
+    // What color should this pixel be?
+    // If the ray hits an object, it'll be that object's colour.
     if let Some(hit) = scene.hit(&ray, 0.0, std::f64::MAX) {
         (hit.normal + Vec3::new_uniform(1.0)).scale(0.5).into()
+    // Otherwise, it'll be the color of the background.
     } else {
         background(ray)
     }

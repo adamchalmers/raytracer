@@ -1,3 +1,4 @@
+use crate::average::Scalable;
 use crate::ray::Ray;
 use crate::vector::Vec3;
 

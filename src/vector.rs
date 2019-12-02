@@ -1,3 +1,4 @@
+use crate::average::Scalable;
 use std::iter::Sum;
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
@@ -51,15 +52,6 @@ impl Vec3 {
         (self.x * self.x) + (self.y * self.y) + (self.z * self.z)
     }
 
-    /// Scale the vector by a scalar
-    pub fn scale(&self, f: f64) -> Self {
-        Vec3 {
-            x: f * self.x,
-            y: f * self.y,
-            z: f * self.z,
-        }
-    }
-
     // Create a weighted average of the two vectors, i.e.
     // t*other + (1-t)self
     pub fn interpolate(&self, other: &Vec3, t: f64) -> Self {
@@ -67,11 +59,32 @@ impl Vec3 {
     }
 }
 
+impl Scalable for Vec3 {
+    /// Scale the vector by a scalar
+    fn scale(&self, f: f64) -> Self {
+        Vec3 {
+            x: f * self.x,
+            y: f * self.y,
+            z: f * self.z,
+        }
+    }
+}
+
 impl<'a> Sum<&'a Vec3> for Vec3 {
-    fn sum<I: Iterator<Item = &'a Vec3>>(mut iter: I) -> Vec3 {
+    fn sum<I: Iterator<Item = &'a Vec3>>(iter: I) -> Vec3 {
         let mut output = Vec3::zero();
-        while let Some(v) = iter.next() {
+        for v in iter {
             output += *v;
+        }
+        output
+    }
+}
+
+impl<'a> Sum<Vec3> for Vec3 {
+    fn sum<I: Iterator<Item = Vec3>>(iter: I) -> Vec3 {
+        let mut output = Vec3::zero();
+        for v in iter {
+            output += v;
         }
         output
     }
