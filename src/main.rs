@@ -4,6 +4,7 @@ mod color;
 mod hittable;
 mod ray;
 mod render;
+mod texture;
 mod vector;
 
 use crate::average::Scalable;
@@ -13,8 +14,10 @@ use crate::hittable::{Hittable, Sphere};
 use crate::ray::Ray;
 use crate::render::Renderer;
 use crate::vector::Vec3;
+use rand::rngs::ThreadRng;
 
 const NUM_ANTIALIAS_SAMPLES: u32 = 10;
+const MAX_REFLECTIONS: u8 = 5;
 
 fn main() {
     let camera = Camera {
@@ -24,26 +27,6 @@ fn main() {
         origin: Vec3::zero(),
     };
 
-    let r = Renderer {
-        width: 200,
-        height: 100,
-        output_dir: "output",
-        filename: "fractal7.png",
-        camera,
-        samples: NUM_ANTIALIAS_SAMPLES,
-    };
-    r.write(color_hit_by)
-}
-
-/// Render the nice blue/white background
-fn background(r: &Ray) -> Color {
-    let t = r.direction.unit().y * 0.5 + 1.0;
-    let white = Color::new_uniform(1.0);
-    let blue = Color::new(0.5, 0.7, 1.0);
-    white.vec().interpolate(&blue.vec(), t).into()
-}
-
-fn color_hit_by(ray: &Ray) -> Color {
     // Let's put a sphere in the middle of the scene.
     let little_sphere = Hittable::Sphere(Sphere {
         center: Vec3 {
@@ -64,10 +47,42 @@ fn color_hit_by(ray: &Ray) -> Color {
     });
     let scene = Hittable::Many(vec![big_sphere, little_sphere]);
 
+    let r = Renderer {
+        width: 200,
+        height: 100,
+        output_dir: "output",
+        filename: "fractal8.png",
+        camera,
+        samples: NUM_ANTIALIAS_SAMPLES,
+    };
+    r.write(&scene, color_hit_by)
+}
+
+/// Render the nice blue/white background
+fn background(r: &Ray) -> Color {
+    let t = r.direction.unit().y * 0.5 + 1.0;
+    let white = Color::new_uniform(1.0);
+    let blue = Color::new(0.5, 0.7, 1.0);
+    white.vec().interpolate(&blue.vec(), t).into()
+}
+
+fn color_hit_by(ray: &Ray, scene: &Hittable, rng: &mut ThreadRng, depth: u8) -> Color {
     // What color should this pixel be?
-    // If the ray hits an object, it'll be that object's colour.
+    // If the ray hits an object:
     if let Some(hit) = scene.hit(&ray, 0.0, std::f64::MAX) {
-        (hit.normal + Vec3::new_uniform(1.0)).scale(0.5).into()
+        // It could reflect off that object
+        if depth < MAX_REFLECTIONS {
+            let target = hit.p + hit.normal + texture::random_in_unit_sphere(rng);
+            let reflected_ray = Ray {
+                origin: hit.p,
+                direction: target - hit.p,
+            };
+            color_hit_by(&reflected_ray, &scene, rng, depth + 1).scale(0.5)
+        //
+        } else {
+            (hit.normal + Vec3::new_uniform(1.0)).scale(0.5).into()
+        }
+
     // Otherwise, it'll be the color of the background.
     } else {
         background(ray)

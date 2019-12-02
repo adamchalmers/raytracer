@@ -1,9 +1,11 @@
 use crate::average::Average;
 use crate::camera::Camera;
 use crate::color::Color;
+use crate::hittable::Hittable;
 use crate::ray::Ray;
 use crate::vector::Vec3;
 use image;
+use rand::rngs::ThreadRng;
 use rand::Rng;
 use std::path::Path;
 
@@ -19,9 +21,9 @@ pub struct Renderer {
 
 impl Renderer {
     /// `color_hit_by` computes the color of the object the ray hits.
-    pub fn write<F>(&self, color_hit_by: F)
+    pub fn write<F>(&self, scene: &Hittable, color_hit_by: F)
     where
-        F: Fn(&Ray) -> Color,
+        F: Fn(&Ray, &Hittable, &mut ThreadRng, u8) -> Color,
     {
         let mut img_buf = image::ImageBuffer::new(self.width, self.height);
         let mut rng = rand::thread_rng();
@@ -41,7 +43,7 @@ impl Renderer {
                 // Then get the ray from the camera to that point,
                 // check what color it hits.
                 let ray = self.camera.ray_to_point(u, v);
-                let color_at_this_point = color_hit_by(&ray);
+                let color_at_this_point = color_hit_by(&ray, &scene, &mut rng, 0);
 
                 // To do antialiasing, average this color with all the other points inside this pixel.
                 avg_color.push(color_at_this_point.vec());
