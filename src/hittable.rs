@@ -16,7 +16,15 @@ impl Hittable {
     pub fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<Hit> {
         match self {
             Self::Sphere(s) => s.hit(ray, t_min, t_max),
-            Self::Many(hs) => None,
+            Self::Many(hittables) => {
+                for hittable in hittables {
+                    let s = hittable.hit(ray, t_min, t_max);
+                    if s.is_some() {
+                        return s;
+                    }
+                }
+                None
+            }
         }
     }
 }

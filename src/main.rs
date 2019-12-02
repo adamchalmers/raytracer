@@ -54,15 +54,23 @@ fn render(p: Pixel) -> Color {
     let ray = Ray { origin, direction };
 
     // Let's put a sphere in the middle of the scene.
-    let sphere = Sphere {
+    let little_sphere = Hittable::Sphere(Sphere {
         center: Vec3 {
             x: 0.0,
             y: 0.0,
             z: -1.0,
         },
         radius: 0.5,
-    };
-    let scene = Hittable::Sphere(sphere);
+    });
+    let big_sphere = Hittable::Sphere(Sphere {
+        center: Vec3 {
+            x: 0.0,
+            y: -100.5,
+            z: -1.0,
+        },
+        radius: 100.0,
+    });
+    let scene = Hittable::Many(vec![little_sphere, big_sphere]);
 
     // What color should this pixel be? Depends on if the ray hits an object in the scene.
     if let Some(hit) = scene.hit(&ray, 0.0, std::f64::MAX) {
