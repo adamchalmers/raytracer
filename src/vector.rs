@@ -7,16 +7,20 @@ pub struct Vec3 {
     pub z: f64,
 }
 
+#[allow(dead_code)]
 impl Vec3 {
     pub fn new_uniform(f: f64) -> Self {
         Vec3 { x: f, y: f, z: f }
     }
+
     pub fn unit(&self) -> Self {
-        self.scale_f(1.0 / self.length())
+        self.scale(1.0 / self.length())
     }
+
     pub fn dot(self, other: Self) -> f64 {
         (self.x * other.x) + (self.y * other.y) + (self.z * other.z)
     }
+
     pub fn cross(self, other: Self) -> Vec3 {
         Vec3 {
             x: (self.y * other.z) - (self.z * other.y),
@@ -24,27 +28,23 @@ impl Vec3 {
             z: (self.x * other.y) - (self.y * other.x),
         }
     }
+
     pub fn length(&self) -> f64 {
         ((self.x * self.x) + (self.y * self.y) + (self.z * self.z)).sqrt()
     }
+
     pub fn squared_length(&self) -> f64 {
         (self.x * self.x) + (self.y * self.y) + (self.z * self.z)
     }
 
-    pub fn to_rgb(&self) -> [u8; 3] {
-        [
-            (self.x * 255.9) as u8,
-            (self.y * 255.9) as u8,
-            (self.z * 255.9) as u8,
-        ]
-    }
-    pub fn scale_f(&self, f: f64) -> Self {
+    pub fn scale(&self, f: f64) -> Self {
         Vec3 {
             x: f * self.x,
             y: f * self.y,
             z: f * self.z,
         }
     }
+
     pub fn scale_i(&self, i: i32) -> Self {
         Vec3 {
             x: i as f64 * self.x,
@@ -52,12 +52,19 @@ impl Vec3 {
             z: i as f64 * self.z,
         }
     }
+
     pub fn scale_u(&self, u: i32) -> Self {
         Vec3 {
             x: u as f64 * self.x,
             y: u as f64 * self.y,
             z: u as f64 * self.z,
         }
+    }
+
+    // Create a weighted average of the two vectors, i.e.
+    // t*other + (1-t)self
+    pub fn interpolate(&self, other: &Vec3, t: f64) -> Self {
+        self.scale(1.0 - t) + other.scale(t)
     }
 }
 
