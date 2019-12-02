@@ -12,10 +12,10 @@ use crate::vector::Vec3;
 
 fn main() {
     let r = Renderer {
-        width: 1680,
-        height: 1050,
+        width: 840,
+        height: 525,
         output_dir: "output",
-        filename: "fractal4.png",
+        filename: "fractal5.png",
     };
     r.write(render)
 }
@@ -65,8 +65,9 @@ fn render(p: Pixel) -> Color {
 
     // What color should this pixel be? Depends on if the ray hits an object in the scene.
     // And there's only one object, so we can check pretty easily!
-    if sphere.hit(&ray) {
-        Color::new(1.0, 0.0, 0.0)
+    if let Some(t) = sphere.hit(&ray) {
+        let normal = (ray.point_at(t) - Color::new(0.0, 0.0, -1.0)).unit();
+        Color::new(normal.x + 1.0, normal.y + 1.0, normal.z + 1.0).scale(0.5)
     } else {
         background(ray)
     }
