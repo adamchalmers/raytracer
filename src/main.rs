@@ -1,5 +1,6 @@
 mod camera;
 mod color;
+mod grid;
 mod hittable;
 mod metrics;
 mod ray;
@@ -72,7 +73,7 @@ fn background(r: &Ray) -> Color {
     white.vec().interpolate(&blue.vec(), t).into()
 }
 
-fn color_hit_by(ray: &Ray, scene: &Hittable, metrics: &mut Metrics) -> Color {
+fn color_hit_by(ray: &Ray, scene: &Hittable) -> Color {
     // What color should this pixel be?
     // If the ray hits an object:
     if let Some(hit) = scene.hit(&ray, 0.001, std::f64::MAX) {
@@ -82,7 +83,7 @@ fn color_hit_by(ray: &Ray, scene: &Hittable, metrics: &mut Metrics) -> Color {
             origin: hit.p,
             direction: target,
         };
-        color_hit_by(&reflected_ray, &scene, metrics).scale(0.5)
+        color_hit_by(&reflected_ray, &scene).scale(0.5)
 
     // Otherwise, it'll be the color of the background.
     } else {

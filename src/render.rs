@@ -6,7 +6,8 @@ use crate::ray::Ray;
 use crate::vector::Vec3;
 use image;
 use rand::rngs::SmallRng;
-use rand::{Rng, SeedableRng};
+use rand::{thread_rng, Rng, SeedableRng};
+use rayon::prelude::*;
 use std::path::Path;
 use std::time;
 
@@ -24,10 +25,10 @@ impl Renderer {
     /// `color_hit_by` computes the color of the object the ray hits.
     pub fn write<F>(&self, scene: &Hittable, color_hit_by: F) -> Metrics
     where
-        F: Fn(&Ray, &Hittable, &mut Metrics) -> Color,
+        F: Fn(&Ray, &Hittable) -> Color,
+        F: std::marker::Sync,
     {
         let mut img_buf = image::ImageBuffer::new(self.width, self.height);
-        let mut rng = SmallRng::from_entropy();
         let mut metrics = Metrics::new();
         let start = time::Instant::now();
 
@@ -35,30 +36,32 @@ impl Renderer {
         for (x, y, pixel) in img_buf.enumerate_pixels_mut() {
             // Sample a number of points inside the pixel, get each of their colors, and average them
             // all together. This is called "antialiasing" and helps the image look smoother.
-            let mut avg_color = Vec3::new_uniform(0.0);
-            for _ in 0..self.samples {
-                metrics.rays_traced_total += 1;
-                // Choose a random point inside this pixel
-                let rx: f64 = rng.gen();
-                let ry: f64 = rng.gen();
-                let u = (x as f64 + rx) / (self.width as f64);
-                let v = ((self.height - y) as f64 + ry) / (self.height as f64);
+            let avg_color: Vec3 = (0..self.samples)
+                .into_par_iter()
+                .map(|_| {
+                    let mut rng = thread_rng();
+                    let rx = rng.gen::<f64>();
+                    let ry = rng.gen::<f64>();
 
-                // Then get the ray from the camera to that point,
-                // check what color it hits.
-                let ray = self.camera.ray_to_point(u, v);
-                let color_at_this_point = color_hit_by(&ray, &scene, &mut metrics);
+                    // Choose a random point inside this pixel
+                    let u = (x as f64 + rx) / (self.width as f64);
+                    let v = ((self.height - y) as f64 + ry) / (self.height as f64);
 
-                // To do antialiasing, average this color with all the other points inside this pixel.
-                avg_color += color_at_this_point.vec();
-            }
+                    // Then get the ray from the camera to that point,
+                    // check what color it hits.
+                    let ray = self.camera.ray_to_point(u, v);
+                    let color_at_this_point = color_hit_by(&ray, &scene);
 
-            // Write the final pixel color into the image.
-            let antialiased_pixel_color = avg_color.scale(1.0 / self.samples as f64);
-            *pixel = image::Rgb(Color::from(antialiased_pixel_color).to_rgb_gamma_corrected());
+                    // To do antialiasing, average this color with all the other points inside this pixel.
+                    color_at_this_point.vec()
+                })
+                .sum::<Vec3>()
+                .scale(1.0 / self.samples as f64);
+            *pixel = image::Rgb(Color::from(avg_color).to_rgb_gamma_corrected());
         }
 
         metrics.time_spent = start.elapsed();
+        metrics.rays_traced_total = (self.width * self.height * self.samples).into();
 
         // Write the image to disk
         let path = Path::new(self.output_dir).join(self.filename);
