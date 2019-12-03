@@ -31,8 +31,8 @@ fn main() {
     };
 
     let r = Renderer {
-        width: 500,
-        height: 250,
+        width: 1000,
+        height: 500,
         output_dir: OUTPUT_DIR,
         filename: FILENAME,
         camera,
