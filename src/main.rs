@@ -21,6 +21,7 @@ use rand::rngs::ThreadRng;
 const NUM_ANTIALIAS_SAMPLES: u32 = 100;
 const FILENAME: &str = "fractal10.png";
 const OUTPUT_DIR: &str = "output";
+const NUM_OBJECTS: usize = 2;
 
 fn main() {
     let camera = Camera {
@@ -62,7 +63,7 @@ fn scene() -> Hittable {
         },
         radius: 100.0,
     });
-    Hittable::Many(vec![big_sphere, little_sphere])
+    Hittable::Many(Box::new([big_sphere, little_sphere]))
 }
 
 /// Render the nice blue/white background
