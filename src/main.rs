@@ -18,8 +18,7 @@ use crate::render::Renderer;
 use crate::vector::Vec3;
 use rand::rngs::ThreadRng;
 
-const NUM_ANTIALIAS_SAMPLES: u32 = 8;
-const MAX_REFLECTIONS: u8 = 4;
+const NUM_ANTIALIAS_SAMPLES: u32 = 100;
 const FILENAME: &str = "fractal10.png";
 const OUTPUT_DIR: &str = "output";
 
@@ -32,8 +31,8 @@ fn main() {
     };
 
     let r = Renderer {
-        width: 200,
-        height: 100,
+        width: 500,
+        height: 250,
         output_dir: OUTPUT_DIR,
         filename: FILENAME,
         camera,
@@ -74,38 +73,20 @@ fn background(r: &Ray) -> Color {
     white.vec().interpolate(&blue.vec(), t).into()
 }
 
-fn color_hit_by(
-    ray: &Ray,
-    scene: &Hittable,
-    rng: &mut ThreadRng,
-    depth: u8,
-    metrics: &mut Metrics,
-) -> Color {
+fn color_hit_by(ray: &Ray, scene: &Hittable, rng: &mut ThreadRng, metrics: &mut Metrics) -> Color {
     // What color should this pixel be?
     // If the ray hits an object:
     if let Some(hit) = scene.hit(&ray, 0.001, std::f64::MAX) {
         // It should reflect off that object, and we can calculate that reflection's colour recursively.
-        // Note, however, that this recursion could build up a very large stack if the reflection
-        // bounces around too much! Then the program would stack overflow.
-        // Hence the recursion_depth parameter.
-        if depth < MAX_REFLECTIONS {
-            let target = hit.normal + texture::random_in_unit_sphere(rng);
-            let reflected_ray = Ray {
-                origin: hit.p,
-                direction: target,
-            };
-            color_hit_by(&reflected_ray, &scene, rng, depth + 1, metrics).scale(0.5)
-        // If the recursion limit is hit, just... add no colour.
-        } else {
-            metrics.rays_out_of_reflect += 1;
-            Color::new_uniform(0.0)
-        }
+        let target = hit.normal + texture::random_in_unit_sphere(rng);
+        let reflected_ray = Ray {
+            origin: hit.p,
+            direction: target,
+        };
+        color_hit_by(&reflected_ray, &scene, rng, metrics).scale(0.5)
 
     // Otherwise, it'll be the color of the background.
     } else {
-        if depth > 0 {
-            metrics.reflected_into_background += 1;
-        }
         background(ray)
     }
 }
