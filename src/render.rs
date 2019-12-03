@@ -1,4 +1,3 @@
-use crate::average::Average;
 use crate::camera::Camera;
 use crate::color::Color;
 use crate::hittable::Hittable;
@@ -36,7 +35,7 @@ impl Renderer {
         for (x, y, pixel) in img_buf.enumerate_pixels_mut() {
             // Sample a number of points inside the pixel, get each of their colors, and average them
             // all together. This is called "antialiasing" and helps the image look smoother.
-            let mut avg_color = Average::<Vec3>::new();
+            let mut avg_color = Vec3::new_uniform(0.0);
             for _ in 0..self.samples {
                 metrics.rays_traced_total += 1;
                 // Choose a random point inside this pixel
@@ -51,11 +50,11 @@ impl Renderer {
                 let color_at_this_point = color_hit_by(&ray, &scene, &mut rng, &mut metrics);
 
                 // To do antialiasing, average this color with all the other points inside this pixel.
-                avg_color.push(color_at_this_point.vec());
+                avg_color += color_at_this_point.vec();
             }
 
             // Write the final pixel color into the image.
-            let antialiased_pixel_color = avg_color.average();
+            let antialiased_pixel_color = avg_color.scale(1.0 / self.samples as f64);
             *pixel = image::Rgb(Color::from(antialiased_pixel_color).to_rgb_gamma_corrected());
         }
 

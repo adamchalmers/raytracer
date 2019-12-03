@@ -1,4 +1,3 @@
-use crate::average::Scalable;
 use crate::vector::Vec3;
 use rand::rngs::SmallRng;
 use rand::Rng;

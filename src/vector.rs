@@ -1,4 +1,3 @@
-use crate::average::Scalable;
 use std::iter::Sum;
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
@@ -57,11 +56,9 @@ impl Vec3 {
     pub fn interpolate(&self, other: &Vec3, t: f64) -> Self {
         self.scale(1.0 - t) + other.scale(t)
     }
-}
 
-impl Scalable for Vec3 {
     /// Scale the vector by a scalar
-    fn scale(&self, f: f64) -> Self {
+    pub fn scale(&self, f: f64) -> Self {
         Vec3 {
             x: f * self.x,
             y: f * self.y,

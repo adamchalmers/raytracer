@@ -1,4 +1,3 @@
-use crate::average::Scalable;
 use crate::vector::Vec3;
 
 #[derive(Clone, Copy)]
@@ -65,10 +64,8 @@ impl Color {
             (self.b().sqrt() * 255.9) as u8,
         ]
     }
-}
 
-impl Scalable for Color {
-    fn scale(&self, f: f64) -> Self {
+    pub fn scale(&self, f: f64) -> Self {
         self.vec().scale(f).into()
     }
 }

@@ -1,4 +1,3 @@
-mod average;
 mod camera;
 mod color;
 mod hittable;
@@ -8,7 +7,6 @@ mod render;
 mod texture;
 mod vector;
 
-use crate::average::Scalable;
 use crate::camera::Camera;
 use crate::color::Color;
 use crate::hittable::{Hittable, Sphere};
