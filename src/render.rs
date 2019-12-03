@@ -24,7 +24,7 @@ impl Renderer {
     /// `color_hit_by` computes the color of the object the ray hits.
     pub fn write<F>(&self, scene: &Hittable, color_hit_by: F) -> Metrics
     where
-        F: Fn(&Ray, &Hittable, &mut SmallRng, &mut Metrics) -> Color,
+        F: Fn(&Ray, &Hittable, &mut Metrics) -> Color,
     {
         let mut img_buf = image::ImageBuffer::new(self.width, self.height);
         let mut rng = SmallRng::from_entropy();
@@ -47,7 +47,7 @@ impl Renderer {
                 // Then get the ray from the camera to that point,
                 // check what color it hits.
                 let ray = self.camera.ray_to_point(u, v);
-                let color_at_this_point = color_hit_by(&ray, &scene, &mut rng, &mut metrics);
+                let color_at_this_point = color_hit_by(&ray, &scene, &mut metrics);
 
                 // To do antialiasing, average this color with all the other points inside this pixel.
                 avg_color += color_at_this_point.vec();

@@ -72,17 +72,17 @@ fn background(r: &Ray) -> Color {
     white.vec().interpolate(&blue.vec(), t).into()
 }
 
-fn color_hit_by(ray: &Ray, scene: &Hittable, rng: &mut SmallRng, metrics: &mut Metrics) -> Color {
+fn color_hit_by(ray: &Ray, scene: &Hittable, metrics: &mut Metrics) -> Color {
     // What color should this pixel be?
     // If the ray hits an object:
     if let Some(hit) = scene.hit(&ray, 0.001, std::f64::MAX) {
         // It should reflect off that object, and we can calculate that reflection's colour recursively.
-        let target = hit.normal + texture::random_in_unit_sphere(rng);
+        let target = hit.normal + texture::random_in_unit_sphere();
         let reflected_ray = Ray {
             origin: hit.p,
             direction: target,
         };
-        color_hit_by(&reflected_ray, &scene, rng, metrics).scale(0.5)
+        color_hit_by(&reflected_ray, &scene, metrics).scale(0.5)
 
     // Otherwise, it'll be the color of the background.
     } else {
