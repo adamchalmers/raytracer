@@ -49,13 +49,11 @@ impl Renderer {
                 let avg_color: Vec3 = (0..self.samples)
                     .into_par_iter()
                     .map(|_| {
-                        let mut rng = thread_rng();
-                        let rx = rng.gen::<f64>();
-                        let ry = rng.gen::<f64>();
-
                         // Choose a random point inside this pixel
-                        let u = (p.x as f64 + rx) / (self.width as f64);
-                        let v = ((self.height - p.y) as f64 + ry) / (self.height as f64);
+                        let mut rng = thread_rng();
+                        let u = (p.x as f64 + rng.gen::<f64>()) / (self.width as f64);
+                        let v =
+                            ((self.height - p.y) as f64 + rng.gen::<f64>()) / (self.height as f64);
 
                         // Then get the ray from the camera to that point,
                         // check what color it hits.

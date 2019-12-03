@@ -76,6 +76,8 @@ fn color_hit_by(ray: &Ray, scene: &Hittable) -> Color {
     // If the ray hits an object:
     if let Some(hit) = scene.hit(&ray, 0.001, std::f64::MAX) {
         // It should reflect off that object, and we can calculate that reflection's colour recursively.
+        // I tried converting this to an iteration or a tail-recursion; neither affected performance,
+        // so I stuck with the plain old recursion, because I thought it was more readable.
         let target = hit.normal + texture::random_in_unit_sphere();
         let reflected_ray = Ray {
             origin: hit.p,
