@@ -17,9 +17,10 @@ impl Metrics {
 
     pub fn describe(&self) -> String {
         format!(
-            "{} rays, {}s elapsed.",
+            "{}ns per ray\n{} rays\n{} seconds",
+            self.time_spent.as_nanos() / (self.rays_traced_total as u128),
             self.rays_traced_total,
-            self.time_spent.as_secs()
+            self.time_spent.as_secs(),
         )
     }
 }

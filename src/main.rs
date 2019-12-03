@@ -16,7 +16,7 @@ use crate::metrics::Metrics;
 use crate::ray::Ray;
 use crate::render::Renderer;
 use crate::vector::Vec3;
-use rand::rngs::ThreadRng;
+use rand::rngs::SmallRng;
 
 const NUM_ANTIALIAS_SAMPLES: u32 = 100;
 const FILENAME: &str = "fractal10.png";
@@ -74,7 +74,7 @@ fn background(r: &Ray) -> Color {
     white.vec().interpolate(&blue.vec(), t).into()
 }
 
-fn color_hit_by(ray: &Ray, scene: &Hittable, rng: &mut ThreadRng, metrics: &mut Metrics) -> Color {
+fn color_hit_by(ray: &Ray, scene: &Hittable, rng: &mut SmallRng, metrics: &mut Metrics) -> Color {
     // What color should this pixel be?
     // If the ray hits an object:
     if let Some(hit) = scene.hit(&ray, 0.001, std::f64::MAX) {

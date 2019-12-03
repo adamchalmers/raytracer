@@ -6,8 +6,8 @@ use crate::metrics::Metrics;
 use crate::ray::Ray;
 use crate::vector::Vec3;
 use image;
-use rand::rngs::ThreadRng;
-use rand::Rng;
+use rand::rngs::SmallRng;
+use rand::{Rng, SeedableRng};
 use std::path::Path;
 use std::time;
 
@@ -25,10 +25,10 @@ impl Renderer {
     /// `color_hit_by` computes the color of the object the ray hits.
     pub fn write<F>(&self, scene: &Hittable, color_hit_by: F) -> Metrics
     where
-        F: Fn(&Ray, &Hittable, &mut ThreadRng, &mut Metrics) -> Color,
+        F: Fn(&Ray, &Hittable, &mut SmallRng, &mut Metrics) -> Color,
     {
         let mut img_buf = image::ImageBuffer::new(self.width, self.height);
-        let mut rng = rand::thread_rng();
+        let mut rng = SmallRng::from_entropy();
         let mut metrics = Metrics::new();
         let start = time::Instant::now();
 
