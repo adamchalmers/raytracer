@@ -2,6 +2,7 @@ mod average;
 mod camera;
 mod color;
 mod hittable;
+mod metrics;
 mod ray;
 mod render;
 mod texture;
@@ -11,13 +12,14 @@ use crate::average::Scalable;
 use crate::camera::Camera;
 use crate::color::Color;
 use crate::hittable::{Hittable, Sphere};
+use crate::metrics::Metrics;
 use crate::ray::Ray;
 use crate::render::Renderer;
 use crate::vector::Vec3;
 use rand::rngs::ThreadRng;
 
-const NUM_ANTIALIAS_SAMPLES: u32 = 10;
-const MAX_REFLECTIONS: u8 = 5;
+const NUM_ANTIALIAS_SAMPLES: u32 = 8;
+const MAX_REFLECTIONS: u8 = 4;
 const FILENAME: &str = "fractal10.png";
 const OUTPUT_DIR: &str = "output";
 
@@ -29,6 +31,20 @@ fn main() {
         origin: Vec3::zero(),
     };
 
+    let r = Renderer {
+        width: 200,
+        height: 100,
+        output_dir: OUTPUT_DIR,
+        filename: FILENAME,
+        camera,
+        samples: NUM_ANTIALIAS_SAMPLES,
+    };
+    let metrics = r.write(&scene(), color_hit_by);
+    eprintln!("{}", metrics.describe());
+    eprintln!("{:?}", metrics);
+}
+
+fn scene() -> Hittable {
     // Let's put a sphere in the middle of the scene.
     let little_sphere = Hittable::Sphere(Sphere {
         center: Vec3 {
@@ -47,17 +63,7 @@ fn main() {
         },
         radius: 100.0,
     });
-    let scene = Hittable::Many(vec![big_sphere, little_sphere]);
-
-    let r = Renderer {
-        width: 200,
-        height: 100,
-        output_dir: OUTPUT_DIR,
-        filename: FILENAME,
-        camera,
-        samples: NUM_ANTIALIAS_SAMPLES,
-    };
-    r.write(&scene, color_hit_by)
+    Hittable::Many(vec![big_sphere, little_sphere])
 }
 
 /// Render the nice blue/white background
@@ -68,25 +74,38 @@ fn background(r: &Ray) -> Color {
     white.vec().interpolate(&blue.vec(), t).into()
 }
 
-fn color_hit_by(ray: &Ray, scene: &Hittable, rng: &mut ThreadRng, depth: u8) -> Color {
+fn color_hit_by(
+    ray: &Ray,
+    scene: &Hittable,
+    rng: &mut ThreadRng,
+    depth: u8,
+    metrics: &mut Metrics,
+) -> Color {
     // What color should this pixel be?
     // If the ray hits an object:
     if let Some(hit) = scene.hit(&ray, 0.001, std::f64::MAX) {
-        // It could reflect off that object
+        // It should reflect off that object, and we can calculate that reflection's colour recursively.
+        // Note, however, that this recursion could build up a very large stack if the reflection
+        // bounces around too much! Then the program would stack overflow.
+        // Hence the recursion_depth parameter.
         if depth < MAX_REFLECTIONS {
             let target = hit.p + hit.normal + texture::random_in_unit_sphere(rng);
             let reflected_ray = Ray {
                 origin: hit.p,
                 direction: target - hit.p,
             };
-            color_hit_by(&reflected_ray, &scene, rng, depth + 1).scale(0.5)
-        //
+            color_hit_by(&reflected_ray, &scene, rng, depth + 1, metrics).scale(0.5)
+        // If the recursion limit is hit, just... add no colour.
         } else {
-            (hit.normal + Vec3::new_uniform(1.0)).scale(0.5).into()
+            metrics.rays_out_of_reflect += 1;
+            Color::new_uniform(0.0)
         }
 
     // Otherwise, it'll be the color of the background.
     } else {
+        if depth > 0 {
+            metrics.reflected_into_background += 1;
+        }
         background(ray)
     }
 }

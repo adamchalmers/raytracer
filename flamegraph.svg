@@ -1,0 +1,300 @@
+<?xml version="1.0" standalone="no"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg version="1.1" width="1200" height="438" onload="init(evt)" viewBox="0 0 1200 438" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><!--Flame graph stack visualization. See https://github.com/brendangregg/FlameGraph for latest version, and http://www.brendangregg.com/flamegraphs.html for examples.--><defs><linearGradient id="background" y1="0" y2="1" x1="0" x2="0"><stop stop-color="#eeeeee" offset="5%"/><stop stop-color="#eeeeb0" offset="95%"/></linearGradient></defs><style type="text/css">.func_g:hover { stroke:black; stroke-width:0.5; cursor:pointer; }</style><script type="text/ecmascript"><![CDATA[var nametype = 'Function:';
+var fontsize = 12;
+var fontwidth = 0.59;
+var xpad = 10;
+var inverted = false;
+var searchcolor = 'rgb(230,0,230)';]]><![CDATA[var details, searchbtn, matchedtxt, svg;
+function init(evt) {
+    details = document.getElementById("details").firstChild;
+    searchbtn = document.getElementById("search");
+    matchedtxt = document.getElementById("matched");
+    svg = document.getElementsByTagName("svg")[0];
+    searching = 0;
+}
+// mouse-over for info
+function s(node) {		// show
+    info = g_to_text(node);
+    details.nodeValue = nametype + " " + info;
+}
+function c() {			// clear
+    details.nodeValue = ' ';
+}
+// ctrl-F for search
+window.addEventListener("keydown",function (e) {
+    if (e.keyCode === 114 || (e.ctrlKey && e.keyCode === 70)) {
+        e.preventDefault();
+        search_prompt();
+    }
+})
+// functions
+function find_child(parent, name, attr) {
+    var children = parent.childNodes;
+    for (var i=0; i<children.length;i++) {
+        if (children[i].tagName == name)
+            return (attr != undefined) ? children[i].attributes[attr].value : children[i];
+    }
+    return;
+}
+function orig_save(e, attr, val) {
+    if (e.attributes["_orig_"+attr] != undefined) return;
+    if (e.attributes[attr] == undefined) return;
+    if (val == undefined) val = e.attributes[attr].value;
+    e.setAttribute("_orig_"+attr, val);
+}
+function orig_load(e, attr) {
+    if (e.attributes["_orig_"+attr] == undefined) return;
+    e.attributes[attr].value = e.attributes["_orig_"+attr].value;
+    e.removeAttribute("_orig_"+attr);
+}
+function g_to_text(e) {
+    var text = find_child(e, "title").firstChild.nodeValue;
+    return (text)
+}
+function g_to_func(e) {
+    var func = g_to_text(e);
+    // if there's any manipulation we want to do to the function
+    // name before it's searched, do it here before returning.
+    return (func);
+}
+function update_text(e) {
+    var r = find_child(e, "rect");
+    var t = find_child(e, "text");
+    var w = parseFloat(r.attributes["width"].value) -3;
+    var txt = find_child(e, "title").textContent.replace(/\\([^(]*\\)\$/,"");
+    t.attributes["x"].value = parseFloat(r.attributes["x"].value) +3;
+    // Smaller than this size won't fit anything
+    if (w < 2*fontsize*fontwidth) {
+        t.textContent = "";
+        return;
+    }
+    t.textContent = txt;
+    // Fit in full text width
+    if (/^ *\$/.test(txt) || t.getSubStringLength(0, txt.length) < w)
+        return;
+    for (var x=txt.length-2; x>0; x--) {
+        if (t.getSubStringLength(0, x+2) <= w) {
+            t.textContent = txt.substring(0,x) + "..";
+            return;
+        }
+    }
+    t.textContent = "";
+}
+// zoom
+function zoom_reset(e) {
+    if (e.attributes != undefined) {
+        orig_load(e, "x");
+        orig_load(e, "width");
+    }
+    if (e.childNodes == undefined) return;
+    for(var i=0, c=e.childNodes; i<c.length; i++) {
+        zoom_reset(c[i]);
+    }
+}
+function zoom_child(e, x, ratio) {
+    if (e.attributes != undefined) {
+        if (e.attributes["x"] != undefined) {
+            orig_save(e, "x");
+            e.attributes["x"].value = (parseFloat(e.attributes["x"].value) - x - xpad) * ratio + xpad;
+            if(e.tagName == "text") e.attributes["x"].value = find_child(e.parentNode, "rect", "x") + 3;
+        }
+        if (e.attributes["width"] != undefined) {
+            orig_save(e, "width");
+            e.attributes["width"].value = parseFloat(e.attributes["width"].value) * ratio;
+        }
+    }
+    if (e.childNodes == undefined) return;
+    for(var i=0, c=e.childNodes; i<c.length; i++) {
+        zoom_child(c[i], x-xpad, ratio);
+    }
+}
+function zoom_parent(e) {
+    if (e.attributes) {
+        if (e.attributes["x"] != undefined) {
+            orig_save(e, "x");
+            e.attributes["x"].value = xpad;
+        }
+        if (e.attributes["width"] != undefined) {
+            orig_save(e, "width");
+            e.attributes["width"].value = parseInt(svg.width.baseVal.value) - (xpad*2);
+        }
+    }
+    if (e.childNodes == undefined) return;
+    for(var i=0, c=e.childNodes; i<c.length; i++) {
+        zoom_parent(c[i]);
+    }
+}
+function zoom(node) {
+    var attr = find_child(node, "rect").attributes;
+    var width = parseFloat(attr["width"].value);
+    var xmin = parseFloat(attr["x"].value);
+    var xmax = parseFloat(xmin + width);
+    var ymin = parseFloat(attr["y"].value);
+    var ratio = (svg.width.baseVal.value - 2*xpad) / width;
+    // XXX: Workaround for JavaScript float issues (fix me)
+    var fudge = 0.0001;
+    var unzoombtn = document.getElementById("unzoom");
+    unzoombtn.style["opacity"] = "1.0";
+    var el = document.getElementsByTagName("g");
+    for(var i=0;i<el.length;i++){
+        var e = el[i];
+        var a = find_child(e, "rect").attributes;
+        var ex = parseFloat(a["x"].value);
+        var ew = parseFloat(a["width"].value);
+        // Is it an ancestor
+        if (!inverted) {
+            var upstack = parseFloat(a["y"].value) > ymin;
+        } else {
+            var upstack = parseFloat(a["y"].value) < ymin;
+        }
+        if (upstack) {
+            // Direct ancestor
+            if (ex <= xmin && (ex+ew+fudge) >= xmax) {
+                e.style["opacity"] = "0.5";
+                zoom_parent(e);
+                e.onclick = function(e){unzoom(); zoom(this);};
+                update_text(e);
+            }
+            // not in current path
+            else
+                e.style["display"] = "none";
+        }
+        // Children maybe
+        else {
+            // no common path
+            if (ex < xmin || ex + fudge >= xmax) {
+                e.style["display"] = "none";
+            }
+            else {
+                zoom_child(e, xmin, ratio);
+                e.onclick = function(e){zoom(this);};
+                update_text(e);
+            }
+        }
+    }
+}
+function unzoom() {
+    var unzoombtn = document.getElementById("unzoom");
+    unzoombtn.style["opacity"] = "0.0";
+    var el = document.getElementsByTagName("g");
+    for(i=0;i<el.length;i++) {
+        el[i].style["display"] = "block";
+        el[i].style["opacity"] = "1";
+        zoom_reset(el[i]);
+        update_text(el[i]);
+    }
+}
+// search
+function reset_search() {
+    var el = document.getElementsByTagName("rect");
+    for (var i=0; i < el.length; i++) {
+        orig_load(el[i], "fill")
+    }
+}
+function search_prompt() {
+    if (!searching) {
+        var term = prompt("Enter a search term (regexp " +
+            "allowed, eg: ^ext4_)", "");
+        if (term != null) {
+            search(term)
+        }
+    } else {
+        reset_search();
+        searching = 0;
+        searchbtn.style["opacity"] = "0.1";
+        searchbtn.firstChild.nodeValue = "Search"
+        matchedtxt.style["opacity"] = "0.0";
+        matchedtxt.firstChild.nodeValue = ""
+    }
+}
+function search(term) {
+    var re = new RegExp(term);
+    var el = document.getElementsByTagName("g");
+    var matches = new Object();
+    var maxwidth = 0;
+    for (var i = 0; i < el.length; i++) {
+        var e = el[i];
+        if (e.attributes["class"].value != "func_g")
+            continue;
+        var func = g_to_func(e);
+        var rect = find_child(e, "rect");
+        if (rect == null) {
+            // the rect might be wrapped in an anchor
+            // if nameattr href is being used
+            if (rect = find_child(e, "a")) {
+                rect = find_child(r, "rect");
+            }
+        }
+        if (func == null || rect == null)
+            continue;
+        // Save max width. Only works as we have a root frame
+        var w = parseFloat(rect.attributes["width"].value);
+        if (w > maxwidth)
+            maxwidth = w;
+        if (func.match(re)) {
+            // highlight
+            var x = parseFloat(rect.attributes["x"].value);
+            orig_save(rect, "fill");
+            rect.attributes["fill"].value = searchcolor;
+            // remember matches
+            if (matches[x] == undefined) {
+                matches[x] = w;
+            } else {
+                if (w > matches[x]) {
+                    // overwrite with parent
+                    matches[x] = w;
+                }
+            }
+            searching = 1;
+        }
+    }
+    if (!searching)
+        return;
+    searchbtn.style["opacity"] = "1.0";
+    searchbtn.firstChild.nodeValue = "Reset Search"
+    // calculate percent matched, excluding vertical overlap
+    var count = 0;
+    var lastx = -1;
+    var lastw = 0;
+    var keys = Array();
+    for (k in matches) {
+        if (matches.hasOwnProperty(k))
+            keys.push(k);
+    }
+    // sort the matched frames by their x location
+    // ascending, then width descending
+    keys.sort(function(a, b){
+        return a - b;
+    });
+    // Step through frames saving only the biggest bottom-up frames
+    // thanks to the sort order. This relies on the tree property
+    // where children are always smaller than their parents.
+    var fudge = 0.0001;	// JavaScript floating point
+    for (var k in keys) {
+        var x = parseFloat(keys[k]);
+        var w = matches[keys[k]];
+        if (x >= lastx + lastw - fudge) {
+            count += w;
+            lastx = x;
+            lastw = w;
+        }
+    }
+    // display matched percent
+    matchedtxt.style["opacity"] = "1.0";
+    pct = 100 * count / maxwidth;
+    if (pct == 100)
+        pct = "100"
+    else
+        pct = pct.toFixed(1)
+    matchedtxt.firstChild.nodeValue = "Matched: " + pct + "%";
+}
+function searchover(e) {
+    searchbtn.style["opacity"] = "1.0";
+}
+function searchout(e) {
+    if (searching) {
+        searchbtn.style["opacity"] = "1.0";
+    } else {
+        searchbtn.style["opacity"] = "0.1";
+    }
+}
+]]></script><rect x="0" y="0" width="1200" height="438" fill="url(#background)"/><text text-anchor="middle" x="600.00" y="24.00" font-size="17" font-family="Verdana" fill="rgb(0, 0, 0)">Flame Graph</text><text id="details" text-anchor="left" x="10.00" y="421.00" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"> </text><text id="unzoom" onclick="unzoom()" style="opacity:0.0;cursor:pointer" text-anchor="left" x="10.00" y="24.00" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">Reset Zoom</text><text id="search" onmouseover="searchover()" onmouseout="searchout()" onclick="search_prompt()" style="opacity:0.1;cursor:pointer" text-anchor="left" x="1090.00" y="24.00" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">Search</text><text id="matched" text-anchor="left" x="1090.00" y="421.00" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"> </text><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`0x108921008 (1 samples, 0.64%)</title><rect x="10" y="325" width="7" height="15" fill="rgb(221,1,44)"/><text text-anchor="left" x="13.00" y="335.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>libdyld.dylib`dyld_stub_binder (1 samples, 0.64%)</title><rect x="10" y="309" width="7" height="15" fill="rgb(250,63,4)"/><text text-anchor="left" x="13.00" y="319.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>dyld`dyld::fastBindLazySymbol (1 samples, 0.64%)</title><rect x="10" y="293" width="7" height="15" fill="rgb(207,12,41)"/><text text-anchor="left" x="13.00" y="303.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>dyld`ImageLoaderMachOCompressed::doBindFastLazySymbol(unsigned int, ImageLoader::LinkContext const&amp;, void (*)(), void (*) (1 samples, 0.64%)</title><rect x="10" y="277" width="7" height="15" fill="rgb(227,143,9)"/><text text-anchor="left" x="13.00" y="287.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>dyld`ImageLoaderMachOCompressed::resolve (1 samples, 0.64%)</title><rect x="10" y="261" width="7" height="15" fill="rgb(224,213,9)"/><text text-anchor="left" x="13.00" y="271.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>dyld`ImageLoaderMachOCompressed::resolveTwolevel (1 samples, 0.64%)</title><rect x="10" y="245" width="7" height="15" fill="rgb(224,90,26)"/><text text-anchor="left" x="13.00" y="255.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>dyld`ImageLoader::findExportedSymbolAddress (1 samples, 0.64%)</title><rect x="10" y="229" width="7" height="15" fill="rgb(248,164,5)"/><text text-anchor="left" x="13.00" y="239.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>dyld`ImageLoaderMachO::findExportedSymbol (1 samples, 0.64%)</title><rect x="10" y="213" width="7" height="15" fill="rgb(230,1,39)"/><text text-anchor="left" x="13.00" y="223.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>dyld`ImageLoaderMachO::libPath (1 samples, 0.64%)</title><rect x="10" y="197" width="7" height="15" fill="rgb(217,199,43)"/><text text-anchor="left" x="13.00" y="207.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>libsystem_malloc.dylib`free (1 samples, 0.64%)</title><rect x="32" y="213" width="8" height="15" fill="rgb(235,127,31)"/><text text-anchor="left" x="35.00" y="223.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>libsystem_malloc.dylib`tiny_free_list_add_ptr (1 samples, 0.64%)</title><rect x="47" y="197" width="8" height="15" fill="rgb(230,225,20)"/><text text-anchor="left" x="50.00" y="207.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`_$LT$raytracer..vector..Vec3$u20$as$u20$core..iter..traits..accum..Sum$GT$::sum::h0c46597381fc2f65 (5 samples, 3.18%)</title><rect x="25" y="229" width="37" height="15" fill="rgb(251,120,9)"/><text text-anchor="left" x="28.00" y="239.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">ray..</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>libsystem_malloc.dylib`free_tiny (3 samples, 1.91%)</title><rect x="40" y="213" width="22" height="15" fill="rgb(228,228,45)"/><text text-anchor="left" x="43.00" y="223.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">l..</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>libsystem_malloc.dylib`tiny_free_no_lock (1 samples, 0.64%)</title><rect x="55" y="197" width="7" height="15" fill="rgb(244,60,4)"/><text text-anchor="left" x="58.00" y="207.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`__rdl_realloc (1 samples, 0.64%)</title><rect x="62" y="229" width="8" height="15" fill="rgb(225,89,39)"/><text text-anchor="left" x="65.00" y="239.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>libsystem_malloc.dylib`malloc (2 samples, 1.27%)</title><rect x="70" y="213" width="15" height="15" fill="rgb(207,113,51)"/><text text-anchor="left" x="73.00" y="223.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>libsystem_malloc.dylib`malloc_zone_malloc (2 samples, 1.27%)</title><rect x="70" y="197" width="15" height="15" fill="rgb(254,6,5)"/><text text-anchor="left" x="73.00" y="207.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>libsystem_malloc.dylib`szone_malloc_should_clear (2 samples, 1.27%)</title><rect x="70" y="181" width="15" height="15" fill="rgb(234,44,50)"/><text text-anchor="left" x="73.00" y="191.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>libsystem_malloc.dylib`tiny_malloc_should_clear (2 samples, 1.27%)</title><rect x="70" y="165" width="15" height="15" fill="rgb(224,35,5)"/><text text-anchor="left" x="73.00" y="175.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>libsystem_malloc.dylib`tiny_malloc_from_free_list (1 samples, 0.64%)</title><rect x="77" y="149" width="8" height="15" fill="rgb(225,176,36)"/><text text-anchor="left" x="80.00" y="159.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>libsystem_malloc.dylib`szone_realloc (5 samples, 3.18%)</title><rect x="92" y="181" width="38" height="15" fill="rgb(231,142,50)"/><text text-anchor="left" x="95.00" y="191.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">lib..</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>libsystem_malloc.dylib`tiny_try_realloc_in_place (5 samples, 3.18%)</title><rect x="92" y="165" width="38" height="15" fill="rgb(238,226,39)"/><text text-anchor="left" x="95.00" y="175.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">lib..</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>libsystem_malloc.dylib`tiny_free_list_remove_ptr (1 samples, 0.64%)</title><rect x="122" y="149" width="8" height="15" fill="rgb(242,84,27)"/><text text-anchor="left" x="125.00" y="159.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>libsystem_malloc.dylib`malloc_zone_realloc (6 samples, 3.82%)</title><rect x="92" y="197" width="45" height="15" fill="rgb(218,51,49)"/><text text-anchor="left" x="95.00" y="207.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">libs..</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>libsystem_malloc.dylib`tiny_try_realloc_in_place (1 samples, 0.64%)</title><rect x="130" y="181" width="7" height="15" fill="rgb(251,143,3)"/><text text-anchor="left" x="133.00" y="191.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`alloc::raw_vec::RawVec$LT$T$C$A$GT$::reserve::h0028e7f6de9306c4 (10 samples, 6.37%)</title><rect x="70" y="229" width="75" height="15" fill="rgb(236,78,40)"/><text text-anchor="left" x="73.00" y="239.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">raytrace..</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>libsystem_malloc.dylib`realloc (8 samples, 5.10%)</title><rect x="85" y="213" width="60" height="15" fill="rgb(213,224,29)"/><text text-anchor="left" x="88.00" y="223.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">libsys..</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>libsystem_malloc.dylib`tiny_size (1 samples, 0.64%)</title><rect x="137" y="197" width="8" height="15" fill="rgb(249,172,2)"/><text text-anchor="left" x="140.00" y="207.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`png::encoder::Writer$LT$W$GT$::write_chunk::h0c86f1187c6ba52d  (1 samples, 0.64%)</title><rect x="145" y="181" width="7" height="15" fill="rgb(221,104,7)"/><text text-anchor="left" x="148.00" y="191.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`std::io::Write::write_all::h3a66f50ee95e2792 (1 samples, 0.64%)</title><rect x="145" y="165" width="7" height="15" fill="rgb(217,112,53)"/><text text-anchor="left" x="148.00" y="175.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>libsystem_kernel.dylib`write (1 samples, 0.64%)</title><rect x="145" y="149" width="7" height="15" fill="rgb(244,41,36)"/><text text-anchor="left" x="148.00" y="159.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`image::io::free_functions::save_buffer_impl::h4a8dee60f8a113ad (2 samples, 1.27%)</title><rect x="145" y="229" width="15" height="15" fill="rgb(248,1,12)"/><text text-anchor="left" x="148.00" y="239.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`image::png::PNGEncoder$LT$W$GT$::encode::ha6f05d7a246a5ec6 (2 samples, 1.27%)</title><rect x="145" y="213" width="15" height="15" fill="rgb(221,83,12)"/><text text-anchor="left" x="148.00" y="223.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`png::encoder::Writer$LT$W$GT$::write_image_data::h55b93870833bf0c2 (2 samples, 1.27%)</title><rect x="145" y="197" width="15" height="15" fill="rgb(234,4,7)"/><text text-anchor="left" x="148.00" y="207.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`png::filter::filter::h08825286a35b8e67 (1 samples, 0.64%)</title><rect x="152" y="181" width="8" height="15" fill="rgb(208,56,50)"/><text text-anchor="left" x="155.00" y="191.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`rand::distributions::float::_$LT$impl$u20$rand..distributions..Distribution$LT$f64$GT$$u20$for$u20$rand..distributions..Standard$GT$::sample::h129b471b6061c79f (3 samples, 1.91%)</title><rect x="160" y="229" width="22" height="15" fill="rgb(233,85,3)"/><text text-anchor="left" x="163.00" y="239.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">r..</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`c2_chacha::guts::refill_wide::h6957883b20b05f6d (2 samples, 1.27%)</title><rect x="167" y="213" width="15" height="15" fill="rgb(214,127,24)"/><text text-anchor="left" x="170.00" y="223.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`c2_chacha::guts::refill_wide::impl_avx2::h5be1c1bc7a578049 (2 samples, 1.27%)</title><rect x="167" y="197" width="15" height="15" fill="rgb(208,119,36)"/><text text-anchor="left" x="170.00" y="207.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>libsystem_malloc.dylib`free (2 samples, 1.27%)</title><rect x="197" y="213" width="15" height="15" fill="rgb(230,165,53)"/><text text-anchor="left" x="200.00" y="223.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>libsystem_malloc.dylib`tiny_size (1 samples, 0.64%)</title><rect x="205" y="197" width="7" height="15" fill="rgb(225,37,12)"/><text text-anchor="left" x="208.00" y="207.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>libsystem_malloc.dylib`free_tiny (3 samples, 1.91%)</title><rect x="212" y="213" width="23" height="15" fill="rgb(227,48,0)"/><text text-anchor="left" x="215.00" y="223.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">l..</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>libsystem_malloc.dylib`set_tiny_meta_header_in_use (1 samples, 0.64%)</title><rect x="295" y="149" width="8" height="15" fill="rgb(230,216,19)"/><text text-anchor="left" x="298.00" y="159.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>libsystem_malloc.dylib`malloc (10 samples, 6.37%)</title><rect x="235" y="213" width="75" height="15" fill="rgb(222,32,48)"/><text text-anchor="left" x="238.00" y="223.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">libsyste..</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>libsystem_malloc.dylib`malloc_zone_malloc (10 samples, 6.37%)</title><rect x="235" y="197" width="75" height="15" fill="rgb(225,76,53)"/><text text-anchor="left" x="238.00" y="207.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">libsyste..</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>libsystem_malloc.dylib`szone_malloc_should_clear (9 samples, 5.73%)</title><rect x="242" y="181" width="68" height="15" fill="rgb(220,36,43)"/><text text-anchor="left" x="245.00" y="191.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">libsyst..</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>libsystem_malloc.dylib`tiny_malloc_should_clear (9 samples, 5.73%)</title><rect x="242" y="165" width="68" height="15" fill="rgb(211,16,0)"/><text text-anchor="left" x="245.00" y="175.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">libsyst..</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>libsystem_malloc.dylib`tiny_malloc_from_free_list (1 samples, 0.64%)</title><rect x="303" y="149" width="7" height="15" fill="rgb(211,121,48)"/><text text-anchor="left" x="306.00" y="159.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`raytracer::camera::Camera::ray_to_point::h9cb2a7ab1a05fed9 (18 samples, 11.46%)</title><rect x="182" y="229" width="136" height="15" fill="rgb(212,165,26)"/><text text-anchor="left" x="185.00" y="239.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">raytracer`raytrac..</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>libsystem_malloc.dylib`szone_size (1 samples, 0.64%)</title><rect x="310" y="213" width="8" height="15" fill="rgb(227,22,36)"/><text text-anchor="left" x="313.00" y="223.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`raytracer::color::Color::new::hc5eea2059ce2a842 (1 samples, 0.64%)</title><rect x="318" y="229" width="7" height="15" fill="rgb(205,132,1)"/><text text-anchor="left" x="321.00" y="239.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`_$LT$f64$u20$as$u20$rand..distributions..utils..FloatSIMDUtils$GT$::cast_from_int::h36cb3ea248134e71 (2 samples, 1.27%)</title><rect x="348" y="213" width="15" height="15" fill="rgb(218,62,39)"/><text text-anchor="left" x="351.00" y="223.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`_$LT$f64$u20$as$u20$rand..distributions..utils..FloatSIMDUtils$GT$::cast_from_int::h36cb3ea248134e71 (1 samples, 0.64%)</title><rect x="400" y="197" width="8" height="15" fill="rgb(215,51,39)"/><text text-anchor="left" x="403.00" y="207.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`c2_chacha::guts::refill_wide::h6957883b20b05f6d (21 samples, 13.38%)</title><rect x="408" y="197" width="158" height="15" fill="rgb(244,173,25)"/><text text-anchor="left" x="411.00" y="207.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">raytracer`c2_chacha:..</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`c2_chacha::guts::refill_wide::impl_avx2::h5be1c1bc7a578049 (21 samples, 13.38%)</title><rect x="408" y="181" width="158" height="15" fill="rgb(223,227,39)"/><text text-anchor="left" x="411.00" y="191.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">raytracer`c2_chacha:..</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`c2_chacha::guts::refill_wide::impl_avx2::h5be1c1bc7a578049 (1 samples, 0.64%)</title><rect x="566" y="197" width="7" height="15" fill="rgb(247,222,44)"/><text text-anchor="left" x="569.00" y="207.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`rand::distributions::float::_$LT$impl$u20$rand..distributions..Distribution$LT$f64$GT$$u20$for$u20$rand..distributions..Standard$GT$::sample::h129b471b6061c79f (30 samples, 19.11%)</title><rect x="363" y="213" width="225" height="15" fill="rgb(250,215,30)"/><text text-anchor="left" x="366.00" y="223.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">raytracer`rand::distributions..</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`rand::rngs::adapter::reseeding::ReseedingCore$LT$R$C$Rsdr$GT$::reseed_and_generate::hb8dcbac1fd8ccbe9  (2 samples, 1.27%)</title><rect x="573" y="197" width="15" height="15" fill="rgb(223,14,9)"/><text text-anchor="left" x="576.00" y="207.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`_$LT$rand_core..os..OsRng$u20$as$u20$rand_core..RngCore$GT$::try_fill_bytes::h959e74e7ee2a0edf (2 samples, 1.27%)</title><rect x="573" y="181" width="15" height="15" fill="rgb(217,125,27)"/><text text-anchor="left" x="576.00" y="191.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>libsystem_kernel.dylib`getentropy (2 samples, 1.27%)</title><rect x="573" y="165" width="15" height="15" fill="rgb(216,124,36)"/><text text-anchor="left" x="576.00" y="175.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`c2_chacha::guts::refill_wide::h6957883b20b05f6d (1 samples, 0.64%)</title><rect x="611" y="197" width="7" height="15" fill="rgb(223,6,45)"/><text text-anchor="left" x="614.00" y="207.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`_$LT$f64$u20$as$u20$rand..distributions..utils..FloatSIMDUtils$GT$::cast_from_int::h36cb3ea248134e71 (1 samples, 0.64%)</title><rect x="663" y="181" width="8" height="15" fill="rgb(241,136,5)"/><text text-anchor="left" x="666.00" y="191.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`rand::distributions::float::_$LT$impl$u20$rand..distributions..Distribution$LT$f64$GT$$u20$for$u20$rand..distributions..Standard$GT$::sample::h129b471b6061c79f (12 samples, 7.64%)</title><rect x="618" y="197" width="90" height="15" fill="rgb(209,97,37)"/><text text-anchor="left" x="621.00" y="207.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">raytracer`..</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`c2_chacha::guts::refill_wide::h6957883b20b05f6d (5 samples, 3.18%)</title><rect x="671" y="181" width="37" height="15" fill="rgb(211,131,40)"/><text text-anchor="left" x="674.00" y="191.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">ray..</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`c2_chacha::guts::refill_wide::impl_avx2::h5be1c1bc7a578049 (5 samples, 3.18%)</title><rect x="671" y="165" width="37" height="15" fill="rgb(253,54,10)"/><text text-anchor="left" x="674.00" y="175.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">ray..</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`raytracer::color::Color::new::hc5eea2059ce2a842 (2 samples, 1.27%)</title><rect x="708" y="197" width="16" height="15" fill="rgb(240,160,29)"/><text text-anchor="left" x="711.00" y="207.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`_$LT$f64$u20$as$u20$rand..distributions..utils..FloatSIMDUtils$GT$::cast_from_int::h36cb3ea248134e71 (1 samples, 0.64%)</title><rect x="731" y="181" width="8" height="15" fill="rgb(212,177,32)"/><text text-anchor="left" x="734.00" y="191.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`_$LT$f64$u20$as$u20$rand..distributions..utils..FloatSIMDUtils$GT$::cast_from_int::h36cb3ea248134e71 (1 samples, 0.64%)</title><rect x="761" y="165" width="8" height="15" fill="rgb(242,29,33)"/><text text-anchor="left" x="764.00" y="175.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`rand::distributions::float::_$LT$impl$u20$rand..distributions..Distribution$LT$f64$GT$$u20$for$u20$rand..distributions..Standard$GT$::sample::h129b471b6061c79f (6 samples, 3.82%)</title><rect x="739" y="181" width="45" height="15" fill="rgb(245,175,20)"/><text text-anchor="left" x="742.00" y="191.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">rayt..</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`c2_chacha::guts::refill_wide::h6957883b20b05f6d (2 samples, 1.27%)</title><rect x="769" y="165" width="15" height="15" fill="rgb(237,4,43)"/><text text-anchor="left" x="772.00" y="175.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`c2_chacha::guts::refill_wide::impl_avx2::h5be1c1bc7a578049 (2 samples, 1.27%)</title><rect x="769" y="149" width="15" height="15" fill="rgb(227,153,9)"/><text text-anchor="left" x="772.00" y="159.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`raytracer::color::Color::new::hc5eea2059ce2a842 (1 samples, 0.64%)</title><rect x="784" y="181" width="7" height="15" fill="rgb(243,23,49)"/><text text-anchor="left" x="787.00" y="191.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`_$LT$f64$u20$as$u20$rand..distributions..utils..FloatSIMDUtils$GT$::cast_from_int::h36cb3ea248134e71 (1 samples, 0.64%)</title><rect x="791" y="149" width="8" height="15" fill="rgb(250,54,44)"/><text text-anchor="left" x="794.00" y="159.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`rand::distributions::float::_$LT$impl$u20$rand..distributions..Distribution$LT$f64$GT$$u20$for$u20$rand..distributions..Standard$GT$::sample::h129b471b6061c79f (7 samples, 4.46%)</title><rect x="791" y="165" width="53" height="15" fill="rgb(226,189,17)"/><text text-anchor="left" x="794.00" y="175.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">raytr..</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`c2_chacha::guts::refill_wide::h6957883b20b05f6d (6 samples, 3.82%)</title><rect x="799" y="149" width="45" height="15" fill="rgb(250,32,36)"/><text text-anchor="left" x="802.00" y="159.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">rayt..</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`c2_chacha::guts::refill_wide::impl_avx2::h5be1c1bc7a578049 (6 samples, 3.82%)</title><rect x="799" y="133" width="45" height="15" fill="rgb(248,87,11)"/><text text-anchor="left" x="802.00" y="143.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">rayt..</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`rand::distributions::float::_$LT$impl$u20$rand..distributions..Distribution$LT$f64$GT$$u20$for$u20$rand..distributions..Standard$GT$::sample::h129b471b6061c79f (3 samples, 1.91%)</title><rect x="851" y="149" width="23" height="15" fill="rgb(252,223,43)"/><text text-anchor="left" x="854.00" y="159.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">r..</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`_$LT$f64$u20$as$u20$rand..distributions..utils..FloatSIMDUtils$GT$::cast_from_int::h36cb3ea248134e71 (2 samples, 1.27%)</title><rect x="859" y="133" width="15" height="15" fill="rgb(223,66,22)"/><text text-anchor="left" x="862.00" y="143.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`rand::distributions::float::_$LT$impl$u20$rand..distributions..Distribution$LT$f64$GT$$u20$for$u20$rand..distributions..Standard$GT$::sample::h129b471b6061c79f (5 samples, 3.18%)</title><rect x="874" y="133" width="37" height="15" fill="rgb(234,183,16)"/><text text-anchor="left" x="877.00" y="143.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">ray..</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`c2_chacha::guts::refill_wide::h6957883b20b05f6d (4 samples, 2.55%)</title><rect x="881" y="117" width="30" height="15" fill="rgb(227,152,2)"/><text text-anchor="left" x="884.00" y="127.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">ra..</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`c2_chacha::guts::refill_wide::impl_avx2::h5be1c1bc7a578049 (4 samples, 2.55%)</title><rect x="881" y="101" width="30" height="15" fill="rgb(228,218,50)"/><text text-anchor="left" x="884.00" y="111.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">ra..</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`rand::distributions::float::_$LT$impl$u20$rand..distributions..Distribution$LT$f64$GT$$u20$for$u20$rand..distributions..Standard$GT$::sample::h129b471b6061c79f (3 samples, 1.91%)</title><rect x="911" y="117" width="23" height="15" fill="rgb(221,31,16)"/><text text-anchor="left" x="914.00" y="127.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">r..</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`c2_chacha::guts::refill_wide::h6957883b20b05f6d (1 samples, 0.64%)</title><rect x="926" y="101" width="8" height="15" fill="rgb(223,122,40)"/><text text-anchor="left" x="929.00" y="111.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`c2_chacha::guts::refill_wide::impl_avx2::h5be1c1bc7a578049 (1 samples, 0.64%)</title><rect x="926" y="85" width="8" height="15" fill="rgb(249,7,53)"/><text text-anchor="left" x="929.00" y="95.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`_$LT$f64$u20$as$u20$rand..distributions..utils..FloatSIMDUtils$GT$::cast_from_int::h36cb3ea248134e71 (1 samples, 0.64%)</title><rect x="941" y="101" width="8" height="15" fill="rgb(227,83,23)"/><text text-anchor="left" x="944.00" y="111.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`rand::distributions::float::_$LT$impl$u20$rand..distributions..Distribution$LT$f64$GT$$u20$for$u20$rand..distributions..Standard$GT$::sample::h129b471b6061c79f (1 samples, 0.64%)</title><rect x="949" y="101" width="8" height="15" fill="rgb(231,122,1)"/><text text-anchor="left" x="952.00" y="111.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`rand::distributions::float::_$LT$impl$u20$rand..distributions..Distribution$LT$f64$GT$$u20$for$u20$rand..distributions..Standard$GT$::sample::h129b471b6061c79f (4 samples, 2.55%)</title><rect x="964" y="85" width="30" height="15" fill="rgb(228,130,3)"/><text text-anchor="left" x="967.00" y="95.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">ra..</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`c2_chacha::guts::refill_wide::h6957883b20b05f6d (4 samples, 2.55%)</title><rect x="964" y="69" width="30" height="15" fill="rgb(228,8,19)"/><text text-anchor="left" x="967.00" y="79.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">ra..</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`c2_chacha::guts::refill_wide::impl_avx2::h5be1c1bc7a578049 (4 samples, 2.55%)</title><rect x="964" y="53" width="30" height="15" fill="rgb(222,202,24)"/><text text-anchor="left" x="967.00" y="63.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">ra..</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`raytracer::color_hit_by::he764be068b49fd2d (3 samples, 1.91%)</title><rect x="994" y="85" width="23" height="15" fill="rgb(246,45,54)"/><text text-anchor="left" x="997.00" y="95.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">r..</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`rand::distributions::float::_$LT$impl$u20$rand..distributions..Distribution$LT$f64$GT$$u20$for$u20$rand..distributions..Standard$GT$::sample::h129b471b6061c79f (2 samples, 1.27%)</title><rect x="1002" y="69" width="15" height="15" fill="rgb(216,61,8)"/><text text-anchor="left" x="1005.00" y="79.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`c2_chacha::guts::refill_wide::h6957883b20b05f6d (1 samples, 0.64%)</title><rect x="1009" y="53" width="8" height="15" fill="rgb(213,207,52)"/><text text-anchor="left" x="1012.00" y="63.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`c2_chacha::guts::refill_wide::impl_avx2::h5be1c1bc7a578049 (1 samples, 0.64%)</title><rect x="1009" y="37" width="8" height="15" fill="rgb(231,210,29)"/><text text-anchor="left" x="1012.00" y="47.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`raytracer::color_hit_by::he764be068b49fd2d (20 samples, 12.74%)</title><rect x="874" y="149" width="150" height="15" fill="rgb(247,6,24)"/><text text-anchor="left" x="877.00" y="159.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">raytracer`raytracer..</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`raytracer::color_hit_by::he764be068b49fd2d (15 samples, 9.55%)</title><rect x="911" y="133" width="113" height="15" fill="rgb(210,206,53)"/><text text-anchor="left" x="914.00" y="143.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">raytracer`ray..</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`raytracer::color_hit_by::he764be068b49fd2d (12 samples, 7.64%)</title><rect x="934" y="117" width="90" height="15" fill="rgb(251,106,43)"/><text text-anchor="left" x="937.00" y="127.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">raytracer`..</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`raytracer::color_hit_by::he764be068b49fd2d (9 samples, 5.73%)</title><rect x="957" y="101" width="67" height="15" fill="rgb(254,173,39)"/><text text-anchor="left" x="960.00" y="111.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">raytrac..</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`raytracer::hittable::Hittable::hit::he51c1987ec9b1180 (1 samples, 0.64%)</title><rect x="1017" y="85" width="7" height="15" fill="rgb(212,126,15)"/><text text-anchor="left" x="1020.00" y="95.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`raytracer::hittable::Hittable::hit::he51c1987ec9b1180 (1 samples, 0.64%)</title><rect x="1017" y="69" width="7" height="15" fill="rgb(207,119,47)"/><text text-anchor="left" x="1020.00" y="79.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`raytracer::color_hit_by::he764be068b49fd2d (26 samples, 16.56%)</title><rect x="844" y="165" width="195" height="15" fill="rgb(215,63,1)"/><text text-anchor="left" x="847.00" y="175.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">raytracer`raytracer::colo..</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`raytracer::hittable::Hittable::hit::he51c1987ec9b1180 (2 samples, 1.27%)</title><rect x="1024" y="149" width="15" height="15" fill="rgb(239,52,10)"/><text text-anchor="left" x="1027.00" y="159.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`raytracer::hittable::Hittable::hit::he51c1987ec9b1180 (1 samples, 0.64%)</title><rect x="1032" y="133" width="7" height="15" fill="rgb(235,225,9)"/><text text-anchor="left" x="1035.00" y="143.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`raytracer::color_hit_by::he764be068b49fd2d (34 samples, 21.66%)</title><rect x="791" y="181" width="256" height="15" fill="rgb(238,9,21)"/><text text-anchor="left" x="794.00" y="191.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">raytracer`raytracer::color_hit_by:..</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`raytracer::hittable::Hittable::hit::he51c1987ec9b1180 (1 samples, 0.64%)</title><rect x="1039" y="165" width="8" height="15" fill="rgb(208,152,25)"/><text text-anchor="left" x="1042.00" y="175.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`raytracer::color_hit_by::he764be068b49fd2d (45 samples, 28.66%)</title><rect x="724" y="197" width="338" height="15" fill="rgb(221,65,7)"/><text text-anchor="left" x="727.00" y="207.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">raytracer`raytracer::color_hit_by::he764be068..</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`raytracer::hittable::Hittable::hit::he51c1987ec9b1180 (2 samples, 1.27%)</title><rect x="1047" y="181" width="15" height="15" fill="rgb(248,108,32)"/><text text-anchor="left" x="1050.00" y="191.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`raytracer::hittable::Hittable::hit::he51c1987ec9b1180 (2 samples, 1.27%)</title><rect x="1047" y="165" width="15" height="15" fill="rgb(244,120,9)"/><text text-anchor="left" x="1050.00" y="175.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`raytracer::color_hit_by::he764be068b49fd2d (73 samples, 46.50%)</title><rect x="588" y="213" width="549" height="15" fill="rgb(231,104,33)"/><text text-anchor="left" x="591.00" y="223.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">raytracer`raytracer::color_hit_by::he764be068b49fd2d</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`raytracer::hittable::Hittable::hit::he51c1987ec9b1180 (10 samples, 6.37%)</title><rect x="1062" y="197" width="75" height="15" fill="rgb(212,40,38)"/><text text-anchor="left" x="1065.00" y="207.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">raytrace..</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`raytracer::hittable::Hittable::hit::he51c1987ec9b1180 (9 samples, 5.73%)</title><rect x="1069" y="181" width="68" height="15" fill="rgb(252,158,37)"/><text text-anchor="left" x="1072.00" y="191.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">raytrac..</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>all (157 samples, 100%)</title><rect x="10" y="389" width="1180" height="15" fill="rgb(234,72,6)"/><text text-anchor="left" x="13.00" y="399.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)"></text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`0x1 (157 samples, 100.00%)</title><rect x="10" y="373" width="1180" height="15" fill="rgb(235,145,45)"/><text text-anchor="left" x="13.00" y="383.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">raytracer`0x1</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>libdyld.dylib`start (157 samples, 100.00%)</title><rect x="10" y="357" width="1180" height="15" fill="rgb(211,181,14)"/><text text-anchor="left" x="13.00" y="367.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">libdyld.dylib`start</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`main (157 samples, 100.00%)</title><rect x="10" y="341" width="1180" height="15" fill="rgb(240,156,48)"/><text text-anchor="left" x="13.00" y="351.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">raytracer`main</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`std::rt::lang_start_internal::hcf96e32a124891dc (156 samples, 99.36%)</title><rect x="17" y="325" width="1173" height="15" fill="rgb(218,200,41)"/><text text-anchor="left" x="20.00" y="335.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">raytracer`std::rt::lang_start_internal::hcf96e32a124891dc</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`__rust_maybe_catch_panic (156 samples, 99.36%)</title><rect x="17" y="309" width="1173" height="15" fill="rgb(253,133,50)"/><text text-anchor="left" x="20.00" y="319.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">raytracer`__rust_maybe_catch_panic</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`std::panicking::try::do_call::ha1a4587e2a4eb439 (156 samples, 99.36%)</title><rect x="17" y="293" width="1173" height="15" fill="rgb(241,3,54)"/><text text-anchor="left" x="20.00" y="303.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">raytracer`std::panicking::try::do_call::ha1a4587e2a4eb439</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`std::rt::lang_start::_$u7b$$u7b$closure$u7d$$u7d$::h1556c2e87e3d20a0 (156 samples, 99.36%)</title><rect x="17" y="277" width="1173" height="15" fill="rgb(242,121,26)"/><text text-anchor="left" x="20.00" y="287.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">raytracer`std::rt::lang_start::_$u7b$$u7b$closure$u7d$$u7d$::h1556c2e87e3d20a0</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`raytracer::main::h77b94ef7604c534c (156 samples, 99.36%)</title><rect x="17" y="261" width="1173" height="15" fill="rgb(212,63,8)"/><text text-anchor="left" x="20.00" y="271.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">raytracer`raytracer::main::h77b94ef7604c534c</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`raytracer::render::Renderer::write::h68ee414ba65bbde9 (156 samples, 99.36%)</title><rect x="17" y="245" width="1173" height="15" fill="rgb(222,65,20)"/><text text-anchor="left" x="20.00" y="255.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">raytracer`raytracer::render::Renderer::write::h68ee414ba65bbde9</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`raytracer::color_hit_by::he764be068b49fd2d (115 samples, 73.25%)</title><rect x="325" y="229" width="865" height="15" fill="rgb(253,213,16)"/><text text-anchor="left" x="328.00" y="239.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">raytracer`raytracer::color_hit_by::he764be068b49fd2d</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`raytracer::hittable::Hittable::hit::he51c1987ec9b1180 (7 samples, 4.46%)</title><rect x="1137" y="213" width="53" height="15" fill="rgb(241,121,4)"/><text text-anchor="left" x="1140.00" y="223.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">raytr..</text></g><g class="func_g" onmouseover="s(this)" onmouseout="c()" onclick="zoom(this)"><title>raytracer`raytracer::hittable::Hittable::hit::he51c1987ec9b1180 (6 samples, 3.82%)</title><rect x="1144" y="197" width="46" height="15" fill="rgb(205,31,33)"/><text text-anchor="left" x="1147.00" y="207.50" font-size="12" font-family="Verdana" fill="rgb(0, 0, 0)">rayt..</text></g></svg>
