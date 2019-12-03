@@ -1,22 +1,26 @@
-pub struct Grid<T> {
+pub struct Grid {
     pub width: usize,
     pub height: usize,
-    pub v: Vec<T>,
 }
 
-impl<T> Grid<T> {
+impl Grid {
     pub fn new(width: usize, height: usize) -> Self {
-        let mut v: Vec<T> = Vec::new();
-        v.reserve(width * height);
-        Grid { width, height, v }
+        Grid { width, height }
     }
 
-    pub fn get(&self, p: Point) -> &T {
-        &self.v[p.y * self.width + p.x]
+    pub fn len(&self) -> usize {
+        self.width * self.height
     }
 
-    pub fn set(&mut self, p: Point, val: T) {
-        self.v[p.y * self.width + p.x] = val;
+    pub fn to_point(&self, i: usize) -> Point {
+        Point {
+            x: i % self.width,
+            y: i / self.width,
+        }
+    }
+
+    pub fn to_index(&self, p: Point) -> usize {
+        p.y * self.width + p.x
     }
 }
 
