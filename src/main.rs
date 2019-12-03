@@ -89,10 +89,10 @@ fn color_hit_by(
         // bounces around too much! Then the program would stack overflow.
         // Hence the recursion_depth parameter.
         if depth < MAX_REFLECTIONS {
-            let target = hit.p + hit.normal + texture::random_in_unit_sphere(rng);
+            let target = hit.normal + texture::random_in_unit_sphere(rng);
             let reflected_ray = Ray {
                 origin: hit.p,
-                direction: target - hit.p,
+                direction: target,
             };
             color_hit_by(&reflected_ray, &scene, rng, depth + 1, metrics).scale(0.5)
         // If the recursion limit is hit, just... add no colour.
