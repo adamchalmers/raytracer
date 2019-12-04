@@ -6,7 +6,7 @@ use rand::{thread_rng, Rng};
 #[derive(Clone, Copy)]
 pub enum Material {
     Diffuse { albedo: Vec3 },
-    Metal { albedo: Vec3 },
+    Metal { albedo: Vec3, fuzz: f64 },
 }
 
 pub struct Scatter {
@@ -28,14 +28,14 @@ impl Material {
                 })
             }
 
-            Self::Metal { albedo } => {
+            Self::Metal { albedo, fuzz } => {
                 let reflected = ray_in.direction.unit().reflect(&hit.normal);
                 if reflected.dot(&hit.normal) > 0.0 {
                     Some(Scatter {
                         attenuation: *albedo,
                         scattered: Ray {
                             origin: hit.p,
-                            direction: reflected,
+                            direction: reflected + random_in_unit_sphere().scale(*fuzz),
                         },
                     })
                 } else {

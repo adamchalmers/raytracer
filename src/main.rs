@@ -16,11 +16,11 @@ use crate::ray::Ray;
 use crate::render::Renderer;
 use crate::vector::Vec3;
 
-const NUM_ANTIALIAS_SAMPLES: usize = 100;
-const FILENAME: &str = "fractal12.png";
+const NUM_ANTIALIAS_SAMPLES: usize = 200;
+const FILENAME: &str = "fractal13.png";
 const OUTPUT_DIR: &str = "output";
 const NUM_OBJECTS: usize = 4;
-const IMG_SCALE: usize = 400;
+const IMG_SCALE: usize = 500;
 
 fn main() {
     let camera = Camera {
@@ -77,6 +77,7 @@ fn scene() -> Hittable {
         radius: 0.5,
         material: Material::Metal {
             albedo: Vec3::new(0.8, 0.6, 0.2),
+            fuzz: 0.9,
         },
     });
     let left = Hittable::Sphere(Sphere {
@@ -86,8 +87,9 @@ fn scene() -> Hittable {
             z: -1.0,
         },
         radius: 0.5,
-        material: Material::Diffuse {
+        material: Material::Metal {
             albedo: Vec3::new(0.8, 0.8, 0.8),
+            fuzz: 0.1,
         },
     });
     Hittable::Many(Box::new([big_sphere, little_sphere, left, right]))
