@@ -2,23 +2,25 @@ mod camera;
 mod color;
 mod grid;
 mod hittable;
+mod material;
 mod metrics;
 mod ray;
 mod render;
-mod texture;
 mod vector;
 
 use crate::camera::Camera;
 use crate::color::Color;
 use crate::hittable::{Hittable, Sphere};
+use crate::material::Material;
 use crate::ray::Ray;
 use crate::render::Renderer;
 use crate::vector::Vec3;
 
 const NUM_ANTIALIAS_SAMPLES: usize = 100;
-const FILENAME: &str = "fractal10.png";
+const FILENAME: &str = "fractal11.png";
 const OUTPUT_DIR: &str = "output";
 const NUM_OBJECTS: usize = 2;
+const IMG_SCALE: usize = 400;
 
 fn main() {
     let camera = Camera {
@@ -29,8 +31,8 @@ fn main() {
     };
 
     let r = Renderer {
-        width: 1000,
-        height: 500,
+        width: 2 * IMG_SCALE,
+        height: 1 * IMG_SCALE,
         output_dir: OUTPUT_DIR,
         filename: FILENAME,
         camera,
@@ -50,6 +52,9 @@ fn scene() -> Hittable {
             z: -1.0,
         },
         radius: 0.5,
+        material: Material::Diffuse {
+            albedo: Vec3::new_uniform(0.9),
+        },
     });
     // And a big grassy plain
     let big_sphere = Hittable::Sphere(Sphere {
@@ -59,6 +64,9 @@ fn scene() -> Hittable {
             z: -1.0,
         },
         radius: 100.0,
+        material: Material::Diffuse {
+            albedo: Vec3::new(0.3, 0.5, 0.3),
+        },
     });
     Hittable::Many(Box::new([big_sphere, little_sphere]))
 }
@@ -71,19 +79,25 @@ fn background(r: &Ray) -> Color {
     white.vec().interpolate(&blue.vec(), t).into()
 }
 
-fn color_hit_by(ray: &Ray, scene: &Hittable) -> Color {
+fn color_hit_by(ray: &Ray, scene: &Hittable, depth: u8) -> Color {
     // What color should this pixel be?
     // If the ray hits an object:
     if let Some(hit) = scene.hit(&ray, 0.001, std::f64::MAX) {
         // It should reflect off that object, and we can calculate that reflection's colour recursively.
         // I tried converting this to an iteration or a tail-recursion; neither affected performance,
         // so I stuck with the plain old recursion, because I thought it was more readable.
-        let target = hit.normal + texture::random_in_unit_sphere();
-        let reflected_ray = Ray {
-            origin: hit.p,
-            direction: target,
-        };
-        color_hit_by(&reflected_ray, &scene).scale(0.5)
+
+        if depth < 50 {
+            if let Some(scatter) = hit.material.scatter(&ray, &hit) {
+                Color::from(
+                    color_hit_by(&scatter.scattered, &scene, depth + 1).vec() * scatter.attenuation,
+                )
+            } else {
+                Color::new_uniform(0.0)
+            }
+        } else {
+            Color::new_uniform(0.0)
+        }
 
     // Otherwise, it'll be the color of the background.
     } else {

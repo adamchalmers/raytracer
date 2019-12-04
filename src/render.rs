@@ -26,7 +26,7 @@ impl Renderer {
     /// `color_hit_by` computes the color of the object the ray hits.
     pub fn render<F>(&self, scene: &Hittable, color_hit_by: F) -> Metrics
     where
-        F: Fn(&Ray, &Hittable) -> Color,
+        F: Fn(&Ray, &Hittable, u8) -> Color,
         F: std::marker::Sync,
     {
         // I'm storing the 2d image in a 1d vector because it's easier to iterate over.
@@ -58,7 +58,7 @@ impl Renderer {
                         // Then get the ray from the camera to that point,
                         // check what color it hits.
                         let ray = self.camera.ray_to_point(u, v);
-                        let color_at_this_point = color_hit_by(&ray, &scene);
+                        let color_at_this_point = color_hit_by(&ray, &scene, 0);
 
                         color_at_this_point.vec()
                     })

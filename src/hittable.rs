@@ -1,3 +1,4 @@
+use crate::material::Material;
 use crate::Ray;
 use crate::Vec3;
 
@@ -10,6 +11,7 @@ pub struct Hit {
     pub t: f64,
     pub p: Vec3,
     pub normal: Vec3,
+    pub material: Material,
 }
 
 impl Hittable {
@@ -37,6 +39,7 @@ impl Hittable {
 pub struct Sphere {
     pub center: Vec3,
     pub radius: f64,
+    pub material: Material,
 }
 
 impl Sphere {
@@ -58,6 +61,7 @@ impl Sphere {
                     t,
                     p,
                     normal: (p - self.center).scale(1.0 / self.radius),
+                    material: self.material,
                 })
             } else {
                 None
