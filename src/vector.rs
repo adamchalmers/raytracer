@@ -26,8 +26,12 @@ impl Vec3 {
     }
 
     /// Compute the dot product
-    pub fn dot(self, other: Self) -> f64 {
+    pub fn dot(&self, other: &Self) -> f64 {
         (self.x * other.x) + (self.y * other.y) + (self.z * other.z)
+    }
+
+    pub fn reflect(&self, normal: &Self) -> Self {
+        *self - normal.scale(self.dot(normal) * 2.0)
     }
 
     pub fn new(x: f64, y: f64, z: f64) -> Self {

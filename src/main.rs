@@ -17,9 +17,9 @@ use crate::render::Renderer;
 use crate::vector::Vec3;
 
 const NUM_ANTIALIAS_SAMPLES: usize = 100;
-const FILENAME: &str = "fractal11.png";
+const FILENAME: &str = "fractal12.png";
 const OUTPUT_DIR: &str = "output";
-const NUM_OBJECTS: usize = 2;
+const NUM_OBJECTS: usize = 4;
 const IMG_SCALE: usize = 400;
 
 fn main() {
@@ -53,7 +53,7 @@ fn scene() -> Hittable {
         },
         radius: 0.5,
         material: Material::Diffuse {
-            albedo: Vec3::new_uniform(0.9),
+            albedo: Vec3::new(0.8, 0.3, 0.3),
         },
     });
     // And a big grassy plain
@@ -65,10 +65,32 @@ fn scene() -> Hittable {
         },
         radius: 100.0,
         material: Material::Diffuse {
-            albedo: Vec3::new(0.3, 0.5, 0.3),
+            albedo: Vec3::new(0.8, 0.8, 0.0),
         },
     });
-    Hittable::Many(Box::new([big_sphere, little_sphere]))
+    let right = Hittable::Sphere(Sphere {
+        center: Vec3 {
+            x: 1.0,
+            y: 0.0,
+            z: -1.0,
+        },
+        radius: 0.5,
+        material: Material::Metal {
+            albedo: Vec3::new(0.8, 0.6, 0.2),
+        },
+    });
+    let left = Hittable::Sphere(Sphere {
+        center: Vec3 {
+            x: -1.0,
+            y: 0.0,
+            z: -1.0,
+        },
+        radius: 0.5,
+        material: Material::Diffuse {
+            albedo: Vec3::new(0.8, 0.8, 0.8),
+        },
+    });
+    Hittable::Many(Box::new([big_sphere, little_sphere, left, right]))
 }
 
 /// Render the nice blue/white background

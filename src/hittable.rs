@@ -49,9 +49,9 @@ impl Sphere {
 
         // Use the quadratic equation's discriminant to check how many places the ray intersects
         // this sphere.
-        let a = ray.direction.dot(ray.direction);
-        let b = origin_to_center.dot(ray.direction);
-        let c = origin_to_center.dot(origin_to_center) - self.radius.powf(2.0);
+        let a = ray.direction.dot(&ray.direction);
+        let b = origin_to_center.dot(&ray.direction);
+        let c = origin_to_center.dot(&origin_to_center) - self.radius.powf(2.0);
         let discriminant = b.powf(2.0) - (a * c);
 
         let hit_at = |t| {

@@ -6,6 +6,7 @@ use rand::{thread_rng, Rng};
 #[derive(Clone, Copy)]
 pub enum Material {
     Diffuse { albedo: Vec3 },
+    Metal { albedo: Vec3 },
 }
 
 pub struct Scatter {
@@ -25,6 +26,21 @@ impl Material {
                         direction: target - hit.p,
                     },
                 })
+            }
+
+            Self::Metal { albedo } => {
+                let reflected = ray_in.direction.unit().reflect(&hit.normal);
+                if reflected.dot(&hit.normal) > 0.0 {
+                    Some(Scatter {
+                        attenuation: *albedo,
+                        scattered: Ray {
+                            origin: hit.p,
+                            direction: reflected,
+                        },
+                    })
+                } else {
+                    None
+                }
             }
         }
     }
