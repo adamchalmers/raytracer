@@ -47,7 +47,7 @@ impl Renderer {
                 // Sample a number of points inside the pixel, get each of their colors, and average them
                 // all together. This is called "antialiasing" and helps the image look smoother.
                 let avg_color: Vec3 = (0..self.samples)
-                    .into_par_iter()
+                    .into_iter()
                     .map(|_| {
                         // Choose a random point inside this pixel
                         let mut rng = thread_rng();
