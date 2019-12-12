@@ -60,7 +60,7 @@ impl Sphere {
                 Some(Hit {
                     t,
                     p,
-                    normal: (p - self.center).scale(1.0 / self.radius),
+                    normal: (p - self.center) / self.radius,
                     material: self.material,
                 })
             } else {

@@ -20,7 +20,7 @@ const NUM_ANTIALIAS_SAMPLES: usize = 200;
 const FILENAME: &str = "fractal13.png";
 const OUTPUT_DIR: &str = "output";
 const NUM_OBJECTS: usize = 4;
-const IMG_SCALE: usize = 500;
+const IMG_SCALE: usize = 200;
 
 fn main() {
     let camera = Camera {
@@ -53,7 +53,7 @@ fn scene() -> Hittable {
         },
         radius: 0.5,
         material: Material::Diffuse {
-            albedo: Vec3::new(0.8, 0.3, 0.3),
+            albedo: Vec3::new(0.8, 0.3, 0.8),
         },
     });
     // And a big grassy plain
@@ -65,7 +65,7 @@ fn scene() -> Hittable {
         },
         radius: 100.0,
         material: Material::Diffuse {
-            albedo: Vec3::new(0.8, 0.8, 0.0),
+            albedo: Vec3::new(0.2, 0.2, 0.2),
         },
     });
     let right = Hittable::Sphere(Sphere {
@@ -76,7 +76,7 @@ fn scene() -> Hittable {
         },
         radius: 0.5,
         material: Material::Metal {
-            albedo: Vec3::new(0.8, 0.6, 0.2),
+            albedo: Vec3::new(0.3, 0.7, 0.7),
             fuzz: 0.9,
         },
     });
@@ -99,7 +99,7 @@ fn scene() -> Hittable {
 fn background(r: &Ray) -> Color {
     let t = r.direction.unit().y * 0.5 + 1.0;
     let white = Color::new_uniform(1.0);
-    let blue = Color::new(0.5, 0.7, 1.0);
+    let blue = Color::new(0.8, 1.0, 1.0);
     white.vec().interpolate(&blue.vec(), t).into()
 }
 

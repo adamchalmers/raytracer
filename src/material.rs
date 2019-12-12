@@ -35,7 +35,7 @@ impl Material {
                         attenuation: *albedo,
                         scattered: Ray {
                             origin: hit.p,
-                            direction: reflected + random_in_unit_sphere().scale(*fuzz),
+                            direction: reflected + random_in_unit_sphere() * *fuzz,
                         },
                     })
                 } else {
@@ -50,7 +50,7 @@ impl Material {
 pub fn random_in_unit_sphere() -> Vec3 {
     let mut rng = thread_rng();
     loop {
-        let p = Vec3::new(rng.gen(), rng.gen(), rng.gen()).scale(2.0) - Vec3::new_uniform(1.0);
+        let p = Vec3::new(rng.gen(), rng.gen(), rng.gen()) * 2.0 - Vec3::new_uniform(1.0);
         if p.squared_length() < 1.0 {
             return p;
         }

@@ -22,7 +22,7 @@ impl Vec3 {
 
     /// Gets a unit vector in the same direction as self.
     pub fn unit(&self) -> Self {
-        self.scale(1.0 / self.length())
+        *self / self.length()
     }
 
     /// Compute the dot product
@@ -32,6 +32,18 @@ impl Vec3 {
 
     pub fn reflect(&self, normal: &Self) -> Self {
         *self - normal.scale(self.dot(normal) * 2.0)
+    }
+
+    pub fn refract(&self, normal: &Self, ni_over_nt: f64) -> Option<Self> {
+        let dt = self.unit().dot(&normal);
+        let discriminant = 1.0 - ni_over_nt.powf(2.0) * (1.0 - dt.powf(2.0));
+        if discriminant > 0.0 {
+            let refracted =
+                (self.unit() - *normal * dt) * ni_over_nt - *normal * discriminant.sqrt();
+            Some(refracted)
+        } else {
+            None
+        }
     }
 
     pub fn new(x: f64, y: f64, z: f64) -> Self {
@@ -58,7 +70,7 @@ impl Vec3 {
     // Create a weighted average of the two vectors, i.e.
     // t*other + (1-t)self
     pub fn interpolate(&self, other: &Vec3, t: f64) -> Self {
-        self.scale(1.0 - t) + other.scale(t)
+        *self * (1.0 - t) + *other * t
     }
 
     /// Scale the vector by a scalar
@@ -142,6 +154,50 @@ impl MulAssign for Vec3 {
             x: self.x * other.x,
             y: self.y * other.y,
             z: self.z * other.z,
+        };
+    }
+}
+
+impl Mul<f64> for Vec3 {
+    type Output = Self;
+
+    fn mul(self, scalar: f64) -> Self {
+        Self {
+            x: self.x * scalar,
+            y: self.y * scalar,
+            z: self.z * scalar,
+        }
+    }
+}
+
+impl MulAssign<f64> for Vec3 {
+    fn mul_assign(&mut self, scalar: f64) {
+        *self = Self {
+            x: self.x * scalar,
+            y: self.y * scalar,
+            z: self.z * scalar,
+        };
+    }
+}
+
+impl Div<f64> for Vec3 {
+    type Output = Self;
+
+    fn div(self, scalar: f64) -> Self {
+        Self {
+            x: self.x / scalar,
+            y: self.y / scalar,
+            z: self.z / scalar,
+        }
+    }
+}
+
+impl DivAssign<f64> for Vec3 {
+    fn div_assign(&mut self, scalar: f64) {
+        *self = Self {
+            x: self.x / scalar,
+            y: self.y / scalar,
+            z: self.z / scalar,
         };
     }
 }

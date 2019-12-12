@@ -9,6 +9,6 @@ pub struct Ray {
 impl Ray {
     /// Get a point that lies along the ray, `t` units away from the ray's origin.
     pub fn point_at(&self, t: f64) -> Vec3 {
-        self.origin + (self.direction.scale(t))
+        self.origin + self.direction * t
     }
 }
