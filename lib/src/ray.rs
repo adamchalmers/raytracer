@@ -1,4 +1,4 @@
-use crate::Vec3;
+use crate::vector::Vec3;
 
 /// Rays are just finite lines, i.e. lines with a start and a direction.
 pub struct Ray {

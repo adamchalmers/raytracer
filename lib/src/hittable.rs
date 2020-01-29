@@ -1,10 +1,10 @@
 use crate::material::Material;
-use crate::Ray;
-use crate::Vec3;
+use crate::ray::Ray;
+use crate::vector::Vec3;
 
 pub enum Hittable {
     Sphere(Sphere),
-    Many(Box<[Hittable; crate::NUM_OBJECTS]>),
+    Many(Box<Vec<Hittable>>),
 }
 
 pub struct Hit {
