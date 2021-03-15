@@ -63,18 +63,21 @@ impl Renderer {
 
         // Iterate over every pixel in the final image, in parallel
         let start = time::Instant::now();
+        let width = self.width as f64;
+        let height = self.height as f64;
         pixels.par_iter_mut().enumerate().for_each(|(i, pixel)| {
-            let point = grid.to_point(i);
+            let Point { x, y } = grid.to_point(i);
+            let x = x as f64;
+            let dy = (self.height - y) as f64;
             // Sample a number of points inside the pixel, get each of their colors, and average them
             // all together. This is called "antialiasing" and helps the image look smoother.
-            let avg_color: Vec3 = (0..self.samples)
+            let avg_color = (0..self.samples)
                 .into_iter()
                 .map(|_| {
                     // Choose a random point inside this pixel
                     let mut rng = thread_rng();
-                    let u = (point.x as f64 + rng.gen::<f64>()) / (self.width as f64);
-                    let v =
-                        ((self.height - point.y) as f64 + rng.gen::<f64>()) / (self.height as f64);
+                    let u = (x + rng.gen::<f64>()) / width;
+                    let v = (dy + rng.gen::<f64>()) / height;
 
                     // Then get the ray from the camera to that point,
                     // check what color it hits.
