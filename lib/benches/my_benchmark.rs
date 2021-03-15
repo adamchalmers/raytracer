@@ -11,6 +11,8 @@ const NUM_ANTIALIAS_SAMPLES: usize = 200;
 const FILENAME: &str = "fractal13.png";
 const OUTPUT_DIR: &str = "output";
 const IMG_SCALE: usize = 10;
+const WIDTH: usize = 2 * IMG_SCALE;
+const HEIGHT: usize = 1 * IMG_SCALE;
 
 pub fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("render", |b| {
@@ -23,14 +25,15 @@ pub fn criterion_benchmark(c: &mut Criterion) {
             };
 
             let r = Renderer {
-                width: 2 * IMG_SCALE,
-                height: 1 * IMG_SCALE,
+                width: WIDTH,
+                height: HEIGHT,
                 output_dir: OUTPUT_DIR,
                 filename: FILENAME,
                 camera,
                 samples: NUM_ANTIALIAS_SAMPLES,
             };
-            r.render(&scene(), color_hit_by);
+            let mut pixels: [[u8; 3]; WIDTH * HEIGHT] = [[0; 3]; WIDTH * HEIGHT];
+            r.render(&scene(), color_hit_by, &mut pixels);
         })
     });
 }

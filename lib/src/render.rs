@@ -24,67 +24,81 @@ pub struct Renderer {
 
 impl Renderer {
     /// `color_hit_by` computes the color of the object the ray hits.
-    pub fn render_img<F>(&self, scene: &Hittable, color_hit_by: F) -> Metrics
+    pub fn render_img<F, const NUM_PIXELS: usize>(
+        &self,
+        scene: &Hittable,
+        color_hit_by: F,
+        mut pixels: [[u8; 3]; NUM_PIXELS],
+    ) -> Metrics
     where
         F: Fn(&Ray, &Hittable, u8) -> Color,
         F: std::marker::Sync,
     {
-        let (pixels, metrics, grid) = self.render(scene, color_hit_by);
-        self.output_img(pixels, grid);
+        let metrics = self.render(scene, color_hit_by, &mut pixels);
+        self.output_img(&pixels);
         metrics
     }
 
     /// `color_hit_by` computes the color of the object the ray hits.
-    pub fn render<F>(&self, scene: &Hittable, color_hit_by: F) -> (Vec<[u8; 3]>, Metrics, Grid)
+    pub fn render<F, const NUM_PIXELS: usize>(
+        &self,
+        scene: &Hittable,
+        color_hit_by: F,
+        pixels: &mut [[u8; 3]; NUM_PIXELS],
+    ) -> Metrics
     where
         F: Fn(&Ray, &Hittable, u8) -> Color,
         F: std::marker::Sync,
     {
         // I'm storing the 2d image in a 1d vector because it's easier to iterate over.
-        let grid = Grid::new(self.width, self.height);
-        let mut metrics = Metrics::new();
+        let grid = Grid {
+            width: self.width,
+            height: self.height,
+        };
 
+        let mut metrics = Metrics::new();
         metrics.rays_traced_total = (self.width * self.height * self.samples)
             .try_into()
             .unwrap();
 
         // Iterate over every pixel in the final image, in parallel
         let start = time::Instant::now();
-        let pixels: Vec<[u8; 3]> = (0..grid.len())
-            .into_par_iter()
-            .map(|i| {
-                let p = grid.to_point(i);
+        pixels.par_iter_mut().enumerate().for_each(|(i, pixel)| {
+            let point = grid.to_point(i);
+            // Sample a number of points inside the pixel, get each of their colors, and average them
+            // all together. This is called "antialiasing" and helps the image look smoother.
+            let avg_color: Vec3 = (0..self.samples)
+                .into_iter()
+                .map(|_| {
+                    // Choose a random point inside this pixel
+                    let mut rng = thread_rng();
+                    let u = (point.x as f64 + rng.gen::<f64>()) / (self.width as f64);
+                    let v =
+                        ((self.height - point.y) as f64 + rng.gen::<f64>()) / (self.height as f64);
 
-                // Sample a number of points inside the pixel, get each of their colors, and average them
-                // all together. This is called "antialiasing" and helps the image look smoother.
-                let avg_color: Vec3 = (0..self.samples)
-                    .into_iter()
-                    .map(|_| {
-                        // Choose a random point inside this pixel
-                        let mut rng = thread_rng();
-                        let u = (p.x as f64 + rng.gen::<f64>()) / (self.width as f64);
-                        let v =
-                            ((self.height - p.y) as f64 + rng.gen::<f64>()) / (self.height as f64);
+                    // Then get the ray from the camera to that point,
+                    // check what color it hits.
+                    let ray = self.camera.ray_to_point(u, v);
+                    let color_at_this_point = color_hit_by(&ray, &scene, 0);
 
-                        // Then get the ray from the camera to that point,
-                        // check what color it hits.
-                        let ray = self.camera.ray_to_point(u, v);
-                        let color_at_this_point = color_hit_by(&ray, &scene, 0);
-
-                        color_at_this_point.vec()
-                    })
-                    // Average the colour of all the points sampled from inside the pixel
-                    .sum::<Vec3>()
-                    .scale(1.0 / self.samples as f64);
-                Color::from(avg_color).to_rgb_gamma_corrected()
-            })
-            .collect();
+                    color_at_this_point.vec()
+                })
+                // Average the colour of all the points sampled from inside the pixel
+                .sum::<Vec3>()
+                .scale(1.0 / self.samples as f64);
+            *pixel = Color::from(avg_color).to_rgb_gamma_corrected();
+        });
         metrics.time_spent = start.elapsed();
-        (pixels, metrics, grid)
+
+        metrics
     }
 
-    fn output_img(&self, pixels: Vec<[u8; 3]>, grid: Grid) {
+    fn output_img<const NUM_PIXELS: usize>(&self, pixels: &[[u8; 3]; NUM_PIXELS]) {
         let mut img_buf = image::ImageBuffer::new(self.width as u32, self.height as u32);
+        let grid = Grid {
+            width: self.width,
+            height: self.height,
+        };
         for (x, y, pixel) in img_buf.enumerate_pixels_mut() {
             let point = Point {
                 x: x as usize,
