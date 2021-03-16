@@ -3,6 +3,7 @@ use raytracer::{
     camera::Camera,
     hittable::{Hittable, Sphere},
     material::{random_point_in_unit_sphere, Material},
+    point::Grid,
     render::{color_hit_by, Renderer},
     vector::Vec3,
 };
@@ -25,14 +26,12 @@ pub fn full_render_benchmark(c: &mut Criterion) {
             };
 
             let r = Renderer {
-                width: WIDTH,
-                height: HEIGHT,
                 output_dir: OUTPUT_DIR,
                 filename: FILENAME,
                 camera,
                 samples: NUM_ANTIALIAS_SAMPLES,
             };
-            let mut pixels: [[u8; 3]; WIDTH * HEIGHT] = [[0; 3]; WIDTH * HEIGHT];
+            let mut pixels: Grid<[u8; 3], WIDTH, HEIGHT> = Default::default();
             r.render(&scene(), color_hit_by, &mut pixels);
         })
     });
