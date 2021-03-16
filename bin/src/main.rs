@@ -1,6 +1,5 @@
 use raytracer::{
     camera::Camera,
-    color::Color,
     grid::Grid,
     hittable::{Hittable, Sphere},
     material::Material,
@@ -11,7 +10,7 @@ use raytracer::{
 const NUM_ANTIALIAS_SAMPLES: usize = 200;
 const FILENAME: &str = "fractal14.png";
 const OUTPUT_DIR: &str = "output";
-const IMG_SCALE: usize = 200;
+const IMG_SCALE: usize = 400;
 const WIDTH: usize = 2 * IMG_SCALE;
 const HEIGHT: usize = IMG_SCALE;
 
@@ -33,7 +32,7 @@ fn main() {
         camera,
         samples: NUM_ANTIALIAS_SAMPLES,
     };
-    let pixels: [Color; WIDTH * HEIGHT] = [Color(Vec3::zero()); WIDTH * HEIGHT];
+    let pixels: [[u8; 3]; WIDTH * HEIGHT] = [[0; 3]; WIDTH * HEIGHT];
     let metrics = r.render_img(&scene(), color_hit_by, pixels);
     eprintln!("{}", metrics.describe());
     eprintln!("{:?}", metrics);

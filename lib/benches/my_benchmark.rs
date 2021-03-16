@@ -1,7 +1,6 @@
 use criterion::{criterion_group, criterion_main, Criterion};
 use raytracer::{
     camera::Camera,
-    color::Color,
     grid::Grid,
     hittable::{Hittable, Sphere},
     material::{random_point_in_unit_sphere, Material},
@@ -36,7 +35,7 @@ pub fn full_render_benchmark(c: &mut Criterion) {
                 camera,
                 samples: NUM_ANTIALIAS_SAMPLES,
             };
-            let mut pixels: [Color; WIDTH * HEIGHT] = [Color(Vec3::zero()); WIDTH * HEIGHT];
+            let mut pixels: [[u8; 3]; WIDTH * HEIGHT] = [[0; 3]; WIDTH * HEIGHT];
             r.render(&scene(), color_hit_by, &mut pixels);
         })
     });

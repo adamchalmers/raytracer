@@ -26,7 +26,7 @@ impl Renderer {
         &self,
         scene: &Hittable,
         color_hit_by: F,
-        mut pixels: [Color; NUM_PIXELS],
+        mut pixels: [[u8; 3]; NUM_PIXELS],
     ) -> Metrics
     where
         F: Fn(&Ray, &Hittable, u8) -> Color,
@@ -46,7 +46,7 @@ impl Renderer {
         &self,
         scene: &Hittable,
         color_hit_by: F,
-        pixels: &mut [Color; NUM_PIXELS],
+        pixels: &mut [[u8; 3]; NUM_PIXELS],
     ) -> Metrics
     where
         F: Sync + Fn(&Ray, &Hittable, u8) -> Color,
@@ -81,20 +81,20 @@ impl Renderer {
 
             // Average the colour of all the points sampled from inside the pixel
             let avg_color = sample_rays.sum::<Vec3>().scale(1.0 / self.samples as f64);
-            *pixel = Color::from(avg_color);
+            *pixel = Color::from(avg_color).to_rgb_gamma_corrected();
         });
         metrics.time_spent = start.elapsed();
         metrics
     }
 
-    fn output_img<const NUM_PIXELS: usize>(&self, pixels: &[Color; NUM_PIXELS]) {
+    fn output_img<const NUM_PIXELS: usize>(&self, pixels: &[[u8; 3]; NUM_PIXELS]) {
         let mut img_buf = image::ImageBuffer::new(self.grid.width as u32, self.grid.height as u32);
         for (x, y, pixel) in img_buf.enumerate_pixels_mut() {
             let color = pixels[self.grid.to_index(Point {
                 x: x as usize,
                 y: y as usize,
             })];
-            *pixel = image::Rgb(color.to_rgb_gamma_corrected());
+            *pixel = image::Rgb(color);
         }
         // Write the image to disk
         let path = Path::new(self.output_dir).join(self.filename);
