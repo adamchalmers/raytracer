@@ -4,7 +4,7 @@ use raytracer::{
     color::Color,
     grid::Grid,
     hittable::{Hittable, Sphere},
-    material::Material,
+    material::{random_point_in_unit_sphere, Material},
     render::{color_hit_by, Renderer},
     vector::Vec3,
 };
@@ -16,8 +16,8 @@ const IMG_SCALE: usize = 10;
 const WIDTH: usize = 2 * IMG_SCALE;
 const HEIGHT: usize = 1 * IMG_SCALE;
 
-pub fn criterion_benchmark(c: &mut Criterion) {
-    c.bench_function("render", |b| {
+pub fn full_render_benchmark(c: &mut Criterion) {
+    c.bench_function("full_render", |b| {
         b.iter(|| {
             let camera = Camera {
                 lower_left_corner: Vec3::new(-2.0, -1.0, -1.0),
@@ -39,6 +39,12 @@ pub fn criterion_benchmark(c: &mut Criterion) {
             let mut pixels: [Color; WIDTH * HEIGHT] = [Color(Vec3::zero()); WIDTH * HEIGHT];
             r.render(&scene(), color_hit_by, &mut pixels);
         })
+    });
+}
+
+pub fn random_unit_sphere_benchmark(c: &mut Criterion) {
+    c.bench_function("random_unit_sphere", |b| {
+        b.iter(|| random_point_in_unit_sphere())
     });
 }
 
@@ -94,5 +100,5 @@ fn scene() -> Hittable {
     Hittable::Many(vec![big_sphere, little_sphere, left, right])
 }
 
-criterion_group!(benches, criterion_benchmark);
+criterion_group!(benches, full_render_benchmark, random_unit_sphere_benchmark);
 criterion_main!(benches);

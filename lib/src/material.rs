@@ -46,25 +46,19 @@ impl Material {
     }
 }
 
-fn random_point_in_unit_sphere() -> Vec3 {
+pub fn random_point_in_unit_sphere() -> Vec3 {
     let mut rng = thread_rng();
     loop {
-        // Generate a vector where all components are between -1 and 1.
-        let p = Vec3::new(rng.gen(), rng.gen(), rng.gen()) * 2.0 - Vec3::new_uniform(1.0);
+        // Pick a random line which might intersect the unit sphere
+        let x = rng.gen::<f64>() * 2.0 - 1.0;
+        let y = rng.gen::<f64>() * 2.0 - 1.0;
+        // Pick a random point along that line, such that if the line intersects,
+        // the point will be inside the sphere.
+        let z = rng.gen::<f64>() * (1.0 - x.powf(2.0) - y.powf(2.0)).sqrt();
+        // Check the assumption
+        let p = Vec3::new(x, y, z);
         if p.squared_length() < 1.0 {
             return p;
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_random_point_in_unit_sphere() {
-        for _ in 0..1000000 {
-            random_point_in_unit_sphere();
         }
     }
 }
