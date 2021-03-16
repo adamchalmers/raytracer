@@ -5,16 +5,13 @@ use crate::hittable::Hittable;
 use crate::metrics::Metrics;
 use crate::ray::Ray;
 use crate::vector::Vec3;
-use image;
 use rand::{thread_rng, Rng};
 use rayon::prelude::*;
-use std::convert::TryInto;
 use std::path::Path;
 use std::time;
 
 pub struct Renderer {
-    pub width: usize,
-    pub height: usize,
+    pub grid: Grid,
     pub filename: &'static str,
     pub output_dir: &'static str,
     pub camera: Camera,
@@ -23,12 +20,13 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    /// `color_hit_by` computes the color of the object the ray hits.
+    /// Computes the image and then writes it to the filesystem as a .png image.
+    /// The `color_hit_by` arg computes the color of the object the ray hits.
     pub fn render_img<F, const NUM_PIXELS: usize>(
         &self,
         scene: &Hittable,
         color_hit_by: F,
-        mut pixels: [[u8; 3]; NUM_PIXELS],
+        mut pixels: [Color; NUM_PIXELS],
     ) -> Metrics
     where
         F: Fn(&Ray, &Hittable, u8) -> Color,
@@ -39,76 +37,64 @@ impl Renderer {
         metrics
     }
 
-    /// `color_hit_by` computes the color of the object the ray hits.
+    /// Perform the actual ray tracing of the scene.
+    /// `scene` is a composition of all objects in the scene.
+    /// `color_hit_by` computes the color of whichever object the ray hits.
+    /// `pixels` is the 2d pixel array, stored in 1d because that's easier to
+    /// iterate over.
     pub fn render<F, const NUM_PIXELS: usize>(
         &self,
         scene: &Hittable,
         color_hit_by: F,
-        pixels: &mut [[u8; 3]; NUM_PIXELS],
+        pixels: &mut [Color; NUM_PIXELS],
     ) -> Metrics
     where
-        F: Fn(&Ray, &Hittable, u8) -> Color,
-        F: std::marker::Sync,
+        F: Sync + Fn(&Ray, &Hittable, u8) -> Color,
     {
-        // I'm storing the 2d image in a 1d vector because it's easier to iterate over.
-        let grid = Grid {
-            width: self.width,
-            height: self.height,
-        };
-
-        let mut metrics = Metrics::new();
-        metrics.rays_traced_total = (self.width * self.height * self.samples)
-            .try_into()
-            .unwrap();
+        let total_rays = self.grid.width * self.grid.height * self.samples;
+        let mut metrics = Metrics::new(total_rays);
 
         // Iterate over every pixel in the final image, in parallel
         let start = time::Instant::now();
-        let width = self.width as f64;
-        let height = self.height as f64;
+        let width = self.grid.width as f64;
+        let height = self.grid.height as f64;
         pixels.par_iter_mut().enumerate().for_each(|(i, pixel)| {
-            let Point { x, y } = grid.to_point(i);
+            let mut rng = thread_rng();
+            let Point { x, y } = self.grid.to_point(i);
             let x = x as f64;
-            let dy = (self.height - y) as f64;
+            let dy = (self.grid.height - y) as f64;
+
             // Sample a number of points inside the pixel, get each of their colors, and average them
             // all together. This is called "antialiasing" and helps the image look smoother.
-            let avg_color = (0..self.samples)
-                .into_iter()
-                .map(|_| {
-                    // Choose a random point inside this pixel
-                    let mut rng = thread_rng();
-                    let u = (x + rng.gen::<f64>()) / width;
-                    let v = (dy + rng.gen::<f64>()) / height;
+            let sample_rays = (0..self.samples).into_iter().map(|_| {
+                // Choose a random point inside this pixel
+                let u = (x + rng.gen::<f64>()) / width;
+                let v = (dy + rng.gen::<f64>()) / height;
 
-                    // Then get the ray from the camera to that point,
-                    // check what color it hits.
-                    let ray = self.camera.ray_to_point(u, v);
-                    let color_at_this_point = color_hit_by(&ray, &scene, 0);
+                // Then get the ray from the camera to that point,
+                // check what color it hits.
+                let ray = self.camera.ray_to_point(u, v);
+                let color_at_this_point = color_hit_by(&ray, &scene, 0);
 
-                    color_at_this_point.vec()
-                })
-                // Average the colour of all the points sampled from inside the pixel
-                .sum::<Vec3>()
-                .scale(1.0 / self.samples as f64);
-            *pixel = Color::from(avg_color).to_rgb_gamma_corrected();
+                color_at_this_point.vec()
+            });
+
+            // Average the colour of all the points sampled from inside the pixel
+            let avg_color = sample_rays.sum::<Vec3>().scale(1.0 / self.samples as f64);
+            *pixel = Color::from(avg_color);
         });
         metrics.time_spent = start.elapsed();
-
         metrics
     }
 
-    fn output_img<const NUM_PIXELS: usize>(&self, pixels: &[[u8; 3]; NUM_PIXELS]) {
-        let mut img_buf = image::ImageBuffer::new(self.width as u32, self.height as u32);
-        let grid = Grid {
-            width: self.width,
-            height: self.height,
-        };
+    fn output_img<const NUM_PIXELS: usize>(&self, pixels: &[Color; NUM_PIXELS]) {
+        let mut img_buf = image::ImageBuffer::new(self.grid.width as u32, self.grid.height as u32);
         for (x, y, pixel) in img_buf.enumerate_pixels_mut() {
-            let point = Point {
+            let color = pixels[self.grid.to_index(Point {
                 x: x as usize,
                 y: y as usize,
-            };
-            let bytes = pixels[grid.to_index(point)];
-            *pixel = image::Rgb(bytes);
+            })];
+            *pixel = image::Rgb(color.to_rgb_gamma_corrected());
         }
         // Write the image to disk
         let path = Path::new(self.output_dir).join(self.filename);

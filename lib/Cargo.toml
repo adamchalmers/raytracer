@@ -9,7 +9,7 @@ edition = "2018"
 [dependencies]
 image = "0.23.14"
 rand = {version = "0.8.3", features = ["small_rng"]}
-rayon = "1.2"
+rayon = "1.5"
 
 [dev-dependencies]
 criterion = "0.3"

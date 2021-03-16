@@ -4,7 +4,7 @@ use crate::vector::Vec3;
 
 pub enum Hittable {
     Sphere(Sphere),
-    Many(Box<Vec<Hittable>>),
+    Many(Vec<Hittable>),
 }
 
 pub struct Hit {
@@ -21,7 +21,6 @@ impl Hittable {
             Self::Many(hittables) => {
                 let mut closest_so_far = t_max;
                 let mut best_hit: Option<Hit> = None;
-                let hittables = &**hittables;
                 for hittable in hittables {
                     if let Some(hit) = hittable.hit(ray, t_min, t_max) {
                         if hit.t < closest_so_far {

@@ -8,7 +8,7 @@ impl Grid {
         Grid { width, height }
     }
 
-    pub fn len(&self) -> usize {
+    pub fn num_cells(&self) -> usize {
         self.width * self.height
     }
 

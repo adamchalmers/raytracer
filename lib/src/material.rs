@@ -18,7 +18,7 @@ impl Material {
     pub fn scatter(&self, ray_in: &Ray, hit: &Hit) -> Option<Scatter> {
         match self {
             Self::Diffuse { albedo } => {
-                let target = hit.p + hit.normal + random_in_unit_sphere();
+                let target = hit.p + hit.normal + random_point_in_unit_sphere();
                 Some(Scatter {
                     attenuation: *albedo,
                     scattered: Ray {
@@ -35,7 +35,7 @@ impl Material {
                         attenuation: *albedo,
                         scattered: Ray {
                             origin: hit.p,
-                            direction: reflected + random_in_unit_sphere() * *fuzz,
+                            direction: reflected + random_point_in_unit_sphere() * *fuzz,
                         },
                     })
                 } else {
@@ -46,10 +46,10 @@ impl Material {
     }
 }
 
-/// Generate a vector where all components are between -1 and 1.
-pub fn random_in_unit_sphere() -> Vec3 {
+fn random_point_in_unit_sphere() -> Vec3 {
     let mut rng = thread_rng();
     loop {
+        // Generate a vector where all components are between -1 and 1.
         let p = Vec3::new(rng.gen(), rng.gen(), rng.gen()) * 2.0 - Vec3::new_uniform(1.0);
         if p.squared_length() < 1.0 {
             return p;
@@ -62,8 +62,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_random_in_unit_sphere() {
-        let p = random_in_unit_sphere();
-        assert!(p.squared_length() < 1.0);
+    fn test_random_point_in_unit_sphere() {
+        for _ in 0..1000000 {
+            random_point_in_unit_sphere();
+        }
     }
 }

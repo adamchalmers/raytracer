@@ -3,14 +3,14 @@ use std::time::Duration;
 #[derive(Debug)]
 pub struct Metrics {
     // How many rays were traced in total
-    pub rays_traced_total: u64,
+    pub rays_traced_total: usize,
     pub time_spent: Duration,
 }
 
 impl Metrics {
-    pub fn new() -> Self {
+    pub fn new(rays_traced_total: usize) -> Self {
         Metrics {
-            rays_traced_total: 0,
+            rays_traced_total,
             time_spent: Duration::from_millis(0),
         }
     }

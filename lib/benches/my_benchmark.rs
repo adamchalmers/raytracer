@@ -1,6 +1,8 @@
 use criterion::{criterion_group, criterion_main, Criterion};
 use raytracer::{
     camera::Camera,
+    color::Color,
+    grid::Grid,
     hittable::{Hittable, Sphere},
     material::Material,
     render::{color_hit_by, Renderer},
@@ -25,14 +27,16 @@ pub fn criterion_benchmark(c: &mut Criterion) {
             };
 
             let r = Renderer {
-                width: WIDTH,
-                height: HEIGHT,
+                grid: Grid {
+                    width: WIDTH,
+                    height: HEIGHT,
+                },
                 output_dir: OUTPUT_DIR,
                 filename: FILENAME,
                 camera,
                 samples: NUM_ANTIALIAS_SAMPLES,
             };
-            let mut pixels: [[u8; 3]; WIDTH * HEIGHT] = [[0; 3]; WIDTH * HEIGHT];
+            let mut pixels: [Color; WIDTH * HEIGHT] = [Color(Vec3::zero()); WIDTH * HEIGHT];
             r.render(&scene(), color_hit_by, &mut pixels);
         })
     });
@@ -87,7 +91,7 @@ fn scene() -> Hittable {
             fuzz: 0.1,
         },
     });
-    Hittable::Many(Box::new(vec![big_sphere, little_sphere, left, right]))
+    Hittable::Many(vec![big_sphere, little_sphere, left, right])
 }
 
 criterion_group!(benches, criterion_benchmark);

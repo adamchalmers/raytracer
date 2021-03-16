@@ -1,5 +1,7 @@
 use raytracer::{
     camera::Camera,
+    color::Color,
+    grid::Grid,
     hittable::{Hittable, Sphere},
     material::Material,
     render::{color_hit_by, Renderer},
@@ -11,7 +13,7 @@ const FILENAME: &str = "fractal14.png";
 const OUTPUT_DIR: &str = "output";
 const IMG_SCALE: usize = 200;
 const WIDTH: usize = 2 * IMG_SCALE;
-const HEIGHT: usize = 1 * IMG_SCALE;
+const HEIGHT: usize = IMG_SCALE;
 
 fn main() {
     let camera = Camera {
@@ -22,14 +24,16 @@ fn main() {
     };
 
     let r = Renderer {
-        width: WIDTH,
-        height: HEIGHT,
+        grid: Grid {
+            width: WIDTH,
+            height: HEIGHT,
+        },
         output_dir: OUTPUT_DIR,
         filename: FILENAME,
         camera,
         samples: NUM_ANTIALIAS_SAMPLES,
     };
-    let pixels: [[u8; 3]; WIDTH * HEIGHT] = [[0; 3]; WIDTH * HEIGHT];
+    let pixels: [Color; WIDTH * HEIGHT] = [Color(Vec3::zero()); WIDTH * HEIGHT];
     let metrics = r.render_img(&scene(), color_hit_by, pixels);
     eprintln!("{}", metrics.describe());
     eprintln!("{:?}", metrics);
@@ -84,5 +88,5 @@ fn scene() -> Hittable {
             fuzz: 0.1,
         },
     });
-    Hittable::Many(Box::new(vec![big_sphere, little_sphere, left, right]))
+    Hittable::Many(vec![big_sphere, little_sphere, left, right])
 }
