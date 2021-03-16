@@ -1,7 +1,6 @@
 use criterion::{criterion_group, criterion_main, Criterion};
 use raytracer::{
     camera::Camera,
-    grid::Grid,
     hittable::{Hittable, Sphere},
     material::{random_point_in_unit_sphere, Material},
     render::{color_hit_by, Renderer},
@@ -26,10 +25,8 @@ pub fn full_render_benchmark(c: &mut Criterion) {
             };
 
             let r = Renderer {
-                grid: Grid {
-                    width: WIDTH,
-                    height: HEIGHT,
-                },
+                width: WIDTH,
+                height: HEIGHT,
                 output_dir: OUTPUT_DIR,
                 filename: FILENAME,
                 camera,

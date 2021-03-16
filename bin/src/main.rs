@@ -1,6 +1,5 @@
 use raytracer::{
     camera::Camera,
-    grid::Grid,
     hittable::{Hittable, Sphere},
     material::Material,
     render::{color_hit_by, Renderer},
@@ -23,10 +22,8 @@ fn main() {
     };
 
     let r = Renderer {
-        grid: Grid {
-            width: WIDTH,
-            height: HEIGHT,
-        },
+        width: WIDTH,
+        height: HEIGHT,
         output_dir: OUTPUT_DIR,
         filename: FILENAME,
         camera,
