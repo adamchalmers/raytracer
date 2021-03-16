@@ -29,8 +29,7 @@ impl Renderer {
         mut pixels: [[u8; 3]; NUM_PIXELS],
     ) -> Metrics
     where
-        F: Fn(&Ray, &Hittable, u8) -> Color,
-        F: std::marker::Sync,
+        F: Sync + Fn(&Ray, &Hittable, u8) -> Color,
     {
         let metrics = self.render(scene, color_hit_by, &mut pixels);
         self.output_img(&pixels);

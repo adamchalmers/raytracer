@@ -1,5 +1,7 @@
 use crate::vector::Vec3;
 
+const RGB_CORRECTION: f64 = 255.9999;
+
 #[derive(Clone, Copy)]
 pub struct Color(pub Vec3);
 
@@ -30,38 +32,38 @@ impl Color {
     }
 
     /// Red
-    pub fn r(&self) -> f64 {
+    pub const fn r(&self) -> f64 {
         self.0.x
     }
 
     /// Green
-    pub fn g(&self) -> f64 {
+    pub const fn g(&self) -> f64 {
         self.0.y
     }
 
     /// Blue
-    pub fn b(&self) -> f64 {
+    pub const fn b(&self) -> f64 {
         self.0.z
     }
 
-    pub fn vec(&self) -> Vec3 {
+    pub const fn vec(&self) -> Vec3 {
         self.0
     }
 
     /// Converts to the standard RGB format of "three uints between 0 and 255"
     pub fn to_rgb(&self) -> [u8; 3] {
         [
-            (self.r() * 255.9) as u8,
-            (self.g() * 255.9) as u8,
-            (self.b() * 255.9) as u8,
+            (self.r() * RGB_CORRECTION) as u8,
+            (self.g() * RGB_CORRECTION) as u8,
+            (self.b() * RGB_CORRECTION) as u8,
         ]
     }
 
     pub fn to_rgb_gamma_corrected(&self) -> [u8; 3] {
         [
-            (self.r().sqrt() * 255.9) as u8,
-            (self.g().sqrt() * 255.9) as u8,
-            (self.b().sqrt() * 255.9) as u8,
+            (self.r().sqrt() * RGB_CORRECTION) as u8,
+            (self.g().sqrt() * RGB_CORRECTION) as u8,
+            (self.b().sqrt() * RGB_CORRECTION) as u8,
         ]
     }
 

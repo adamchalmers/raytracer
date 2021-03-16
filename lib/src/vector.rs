@@ -18,12 +18,12 @@ impl fmt::Display for Vec3 {
 #[allow(dead_code)]
 impl Vec3 {
     /// Create a vector where all components have value f
-    pub fn new_uniform(f: f64) -> Self {
+    pub const fn new_uniform(f: f64) -> Self {
         Vec3 { x: f, y: f, z: f }
     }
 
     /// Create the zero vector <0, 0, 0>
-    pub fn zero() -> Self {
+    pub const fn zero() -> Self {
         Vec3::new_uniform(0.0)
     }
 
@@ -53,7 +53,7 @@ impl Vec3 {
         }
     }
 
-    pub fn new(x: f64, y: f64, z: f64) -> Self {
+    pub const fn new(x: f64, y: f64, z: f64) -> Self {
         Vec3 { x, y, z }
     }
 
