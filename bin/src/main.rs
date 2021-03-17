@@ -1,8 +1,8 @@
 use raytracer::{
     camera::Camera,
+    grid::Grid,
     hittable::{Hittable, Sphere},
     material::Material,
-    point::Grid,
     render::{color_hit_by, Renderer},
     vector::Vec3,
 };

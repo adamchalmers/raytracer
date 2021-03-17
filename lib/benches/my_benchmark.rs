@@ -1,9 +1,9 @@
 use criterion::{criterion_group, criterion_main, Criterion};
 use raytracer::{
     camera::Camera,
+    grid::Grid,
     hittable::{Hittable, Sphere},
     material::{random_point_in_unit_sphere, Material},
-    point::Grid,
     render::{color_hit_by, Renderer},
     vector::Vec3,
 };
