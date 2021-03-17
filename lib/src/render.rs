@@ -79,6 +79,7 @@ impl Renderer {
         }
     }
 
+    /// Convert the pixel array to a JPG and write it to the local filesystem.
     fn output_img<const W: usize, const H: usize>(&self, pixels: Grid<[u8; 3], W, H>)
     where
         [u8; W * H]: Sized,
