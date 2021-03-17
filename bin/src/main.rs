@@ -29,7 +29,7 @@ fn main() {
         samples: NUM_ANTIALIAS_SAMPLES,
     };
     let pixels: Grid<[u8; 3], WIDTH, HEIGHT> = Default::default();
-    let metrics = r.render_img(&scene(), color_hit_by, pixels);
+    let metrics = r.render_img(scene(), color_hit_by, pixels);
     eprintln!("{}", metrics.describe());
     eprintln!("{:?}", metrics);
 }

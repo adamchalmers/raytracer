@@ -22,65 +22,61 @@ impl Renderer {
     /// The `color_hit_by` arg computes the color of the object the ray hits.
     pub fn render_img<F, const W: usize, const H: usize>(
         &self,
-        scene: &Hittable,
+        scene: Hittable,
         color_hit_by: F,
         mut pixels: Grid<[u8; 3], W, H>,
     ) -> Metrics
     where
-        F: Sync + Fn(&Ray, &Hittable, u8) -> Color,
+        F: Sync + Send + Fn(&Ray, &Hittable, u8) -> Color,
         [u8; W * H]: Sized,
     {
-        let metrics = self.render(scene, color_hit_by, &mut pixels);
+        let mut metrics = Metrics::new(self.samples * pixels.size());
+        let render_fn = self.render(scene, color_hit_by, pixels.height(), pixels.width());
+        let start = time::Instant::now();
+        pixels.set_all_parallel(render_fn);
+        metrics.time_spent = start.elapsed();
         self.output_img(pixels);
         metrics
     }
 
-    /// Perform the actual ray tracing of the scene.
+    /// Returns a closure which computes the colour of each pixel in the image.
     /// `scene` is a composition of all objects in the scene.
     /// `color_hit_by` computes the color of whichever object the ray hits.
-    /// `pixels` is the 2d pixel grid.
-    pub fn render<F, const W: usize, const H: usize>(
+    pub fn render<F>(
         &self,
-        scene: &Hittable,
+        scene: Hittable,
         color_hit_by: F,
-        pixels: &mut Grid<[u8; 3], W, H>,
-    ) -> Metrics
+        height: usize,
+        width: usize,
+    ) -> impl Send + Sync + Fn(Point) -> [u8; 3]
     where
-        F: Sync + Fn(&Ray, &Hittable, u8) -> Color,
-        [u8; W * H]: Sized,
+        F: Sync + Send + Fn(&Ray, &Hittable, u8) -> Color,
     {
-        let total_rays = pixels.size() * self.samples;
-        let mut metrics = Metrics::new(total_rays);
-
-        let start = time::Instant::now();
-        let height = pixels.height();
-        let width = pixels.width();
-        pixels.set_all_parallel(|Point { x, y }| {
+        let samples = self.samples;
+        let camera = self.camera;
+        move |Point { x, y }| {
             let mut rng = thread_rng();
-            let x = x as f64;
             let dy = (height - y) as f64;
 
             // Sample a number of points inside the pixel, get each of their colors, and average them
             // all together. This is called "antialiasing" and helps the image look smoother.
-            let sample_rays = (0..self.samples).into_iter().map(|_| {
+            let sample_rays = (0..samples).into_iter().map(|_| {
                 // Choose a random point inside this pixel
-                let u = (x + rng.gen::<f64>()) / width as f64;
+                let u = (x as f64 + rng.gen::<f64>()) / width as f64;
                 let v = (dy + rng.gen::<f64>()) / height as f64;
 
                 // Then get the ray from the camera to that point,
                 // check what color it hits.
-                let ray = self.camera.ray_to_point(u, v);
+                let ray = camera.ray_to_point(u, v);
                 let color_at_this_point = color_hit_by(&ray, &scene, 0);
 
                 color_at_this_point.vec()
             });
 
             // Average the colour of all the points sampled from inside the pixel
-            let avg_color = sample_rays.sum::<Vec3>().scale(1.0 / self.samples as f64);
+            let avg_color = sample_rays.sum::<Vec3>().scale(1.0 / samples as f64);
             Color::from(avg_color).to_rgb_gamma_corrected()
-        });
-        metrics.time_spent = start.elapsed();
-        metrics
+        }
     }
 
     fn output_img<const W: usize, const H: usize>(&self, pixels: Grid<[u8; 3], W, H>)
