@@ -4,20 +4,14 @@ pub struct Point {
 }
 
 /// Just a two-dimensional array.
-pub struct Grid<T, const W: usize, const H: usize>
-where
-    [T; W * H]: Sized,
-{
-    array: [T; W * H],
+pub struct Grid<T, const W: usize, const H: usize> {
+    array: [[T; W]; H],
 }
 
-impl<T, const W: usize, const H: usize> Grid<T, W, H>
-where
-    [T; W * H]: Sized,
-{
+impl<T, const W: usize, const H: usize> Grid<T, W, H> {
     /// Get the element at the specified 2D location in the grid.
-    pub fn get_at(&self, p: &Point) -> &T {
-        &self.array[p.y * W + p.x]
+    pub fn get(&self, p: &Point) -> &T {
+        &self.array[p.y][p.x]
     }
 
     /// How many elements are in the grid?
@@ -33,20 +27,6 @@ where
         W
     }
 
-    /// Returns a closure which can translate 1d indices
-    /// to 2d indices.
-    fn indexer(&self) -> impl Fn(usize) -> Point {
-        |i| Point { x: i % W, y: i / W }
-    }
-
-    pub fn as_mut_slice(&mut self) -> &mut [T] {
-        &mut self.array
-    }
-
-    pub fn as_slice(&mut self) -> &[T] {
-        &self.array
-    }
-
     /// Recompute each item in the grid using the provided setter function.
     /// The setter function takes the item's location in the grid and outputs
     /// the desired value of that item.
@@ -56,24 +36,21 @@ where
         T: Send,
     {
         use rayon::prelude::*;
-        let to_point = self.indexer();
-        self.as_mut_slice()
-            .par_iter_mut()
-            .enumerate()
-            .for_each(|(i, item)| {
-                *item = setter(to_point(i));
-            });
+        self.array.par_iter_mut().enumerate().for_each(|(y, row)| {
+            for (x, item) in row.iter_mut().enumerate() {
+                *item = setter(Point { x, y });
+            }
+        })
     }
 }
 
 impl<T, const W: usize, const H: usize> Default for Grid<T, W, H>
 where
-    [T; W * H]: Sized,
     T: Default + Copy,
 {
     fn default() -> Self {
         Self {
-            array: [Default::default(); W * H],
+            array: [[Default::default(); W]; H],
         }
     }
 }

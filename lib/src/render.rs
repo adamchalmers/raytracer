@@ -28,7 +28,6 @@ impl Renderer {
     ) -> Metrics
     where
         F: Sync + Send + Fn(&Ray, &Hittable, u8) -> Color,
-        [u8; W * H]: Sized,
     {
         let mut metrics = Metrics::new(self.samples * pixels.size());
         let render_fn = self.render(scene, color_hit_by, pixels.height(), pixels.width());
@@ -80,13 +79,10 @@ impl Renderer {
     }
 
     /// Convert the pixel array to a JPG and write it to the local filesystem.
-    fn output_img<const W: usize, const H: usize>(&self, pixels: Grid<[u8; 3], W, H>)
-    where
-        [u8; W * H]: Sized,
-    {
+    fn output_img<const W: usize, const H: usize>(&self, pixels: Grid<[u8; 3], W, H>) {
         let mut img_buf = image::ImageBuffer::new(pixels.width() as u32, pixels.height() as u32);
         for (x, y, pixel) in img_buf.enumerate_pixels_mut() {
-            let color = pixels.get_at(&Point {
+            let color = pixels.get(&Point {
                 x: x as usize,
                 y: y as usize,
             });

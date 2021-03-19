@@ -1,5 +1,3 @@
-#![feature(const_generics)]
-#![feature(const_evaluatable_checked)]
 pub mod camera;
 pub mod color;
 pub mod grid;
